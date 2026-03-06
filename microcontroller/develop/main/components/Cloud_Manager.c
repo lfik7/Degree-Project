@@ -25,8 +25,8 @@ extern const uint8_t root_ca_pem_end[]   asm("_binary_root_ca_pem_end");
 static const char *TAG_HTTPS = "HTTPS_CLIENT", *TAG_CLOUDM = "CLOUDM";
 
 
-static const char* FIREBASE_URL = "https://proyecto-receptaculo-default-rtdb.firebaseio.com/";
-static const char* FIREBASE_AUTH = "?auth=oDQJsD2ff832SPDK0GlDig2ujRC7nMTvKkDYhKKn";
+static const char* FIREBASE_URL = "";
+static const char* FIREBASE_AUTH = "";
 static const char* full_url_template = "%s%s.json%s"; 
 static char full_url[512];
 
@@ -692,6 +692,7 @@ bool Cloud_update_monitor_presence(){
 	
 	return true;
 }
+
 
 
 
