@@ -90,8 +90,6 @@ float DS18B20_get_Temperature_Value();						// Calls do_Temperature_Convertion_D
 void DS18B20_print_Resolution_selected(uint8_t *);	// Get the resolution value and print it
 
 
-//void DS18B20_main_function(void);
-
 
 
 

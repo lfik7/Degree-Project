@@ -37,13 +37,8 @@ void HX711_set_Power_Down(bool Power_Down){
 
 int32_t HX711_read_Response(uint8_t* Next_Chn_Gain){
 	
-//	if(gpio_get_level(HX711_GPIO_SCK)){
-//		ESP_LOGE(TAG_HX711, "Is still in Powered Down mode!");
-//		return 0;
-//	}
 	
 	int32_t response = 0;
-//	uint8_t sign = 0;
 	
 	for(uint8_t i = 0; i < *Next_Chn_Gain; i++){
 		gpio_set_level(HX711_GPIO_SCK, 1);
@@ -58,7 +53,6 @@ int32_t HX711_read_Response(uint8_t* Next_Chn_Gain){
 		}
 	}
 	
-//	sign = response >> 23;  
 	
 	if(response & 0x800000){
 		response = response | 0xFF000000;
@@ -134,7 +128,6 @@ void HX711_get_Bougth_Channels(float* Volt_Channels, bool Chn_A_gain){
 	}
 	
 	HX711_read_Response(&next_chn_gain);
-//	vTaskDelay(pdMS_TO_TICKS(Convertion_Time));
 
 	while(gpio_get_level(HX711_GPIO_DOUT)){
 		vTaskDelay(pdMS_TO_TICKS(3));
@@ -145,7 +138,6 @@ void HX711_get_Bougth_Channels(float* Volt_Channels, bool Chn_A_gain){
 //	ESP_LOGI(TAG_HX711, "obtained response: %ld", (long)response);
 	Volt_Channels[0] = HX711_convert_To_Voltage(&response);
 	
-//	vTaskDelay(pdMS_TO_TICKS(Convertion_Time));
 
 	while(gpio_get_level(HX711_GPIO_DOUT)){
 		vTaskDelay(pdMS_TO_TICKS(3));
@@ -155,6 +147,5 @@ void HX711_get_Bougth_Channels(float* Volt_Channels, bool Chn_A_gain){
 //	ESP_LOGI(TAG_HX711, "obtained response: %ld", (long)response);
 	Volt_Channels[1] = HX711_convert_To_Voltage(&response);	
 
-//	HX711_set_Power_Down(true);
 }
 

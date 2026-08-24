@@ -19,7 +19,6 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_rom_sys.h"
-//#include "esp_attr.h"
 #include "esp_err.h"
 #include "driver/gpio.h"
 #include "hal/gpio_types.h"
@@ -47,7 +46,6 @@ int32_t HX711_read_channel_raw(const char channel, uint8_t pga_gain);
 void HX711_get_Bougth_Channels(float* Volt_Channels, bool Chn_A_gain);	// Volt_Channels shall an vector of size 2, [0] = chn A, [1] = chn B. The result will be inside of this variable || Chn_A_gain is used to know the channel A gain desired, true = 128, false = 64
 
 
-//void HX711_main_function(void);
 
 
 #endif /* HX711_H_ */

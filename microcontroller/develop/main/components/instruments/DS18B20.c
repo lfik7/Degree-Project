@@ -58,7 +58,7 @@ esp_err_t  DS18B20_Initialize(){
 	gpio_set_level(DS18B20_GPIO, 0);
 	esp_rom_delay_us(800);			// Waiting time to send the reset action
 	gpio_set_level(DS18B20_GPIO, 1);
-	esp_rom_delay_us(90);			// Waiting time to catch the DS18B20 response
+	esp_rom_delay_us(60);			// Waiting time to catch the DS18B20 response
 //	response = gpio_get_level(DS18B20_GPIO);
 	
 	if(gpio_get_level(DS18B20_GPIO)){
@@ -66,7 +66,7 @@ esp_err_t  DS18B20_Initialize(){
 		return ESP_ERR_INVALID_RESPONSE;
 	}
 	
-	esp_rom_delay_us(390);
+	esp_rom_delay_us(480);
 	
 	if(!gpio_get_level(DS18B20_GPIO)){
 		ESP_LOGE(TAG_DS18B20, "Data line in low level much time!");
@@ -83,9 +83,9 @@ void  DS18B20_Write_Byte(uint8_t Byte_Send){
 		esp_rom_delay_us(3);		// Waiting time between bits sending
 		gpio_set_level(DS18B20_GPIO, 0);
 		if((Byte_Send & 0x01)){
-			esp_rom_delay_us(10);	// Waiting time to send 1
+			esp_rom_delay_us(8);	// Waiting time to send 1
 			gpio_set_level(DS18B20_GPIO, 1);
-			esp_rom_delay_us(80); 
+			esp_rom_delay_us(82); 
 		}else{
 			esp_rom_delay_us(90);	// Waiting time to send 0
 			gpio_set_level(DS18B20_GPIO, 1);

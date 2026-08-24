@@ -242,13 +242,11 @@ int32_t ADS1219_read_channel_raw(uint8_t channel)
 			channel_val = ADS1219_CONFIG_SEL_CH0;
 	}
 		
-//	while(gpio_get_level(ADS_RDY) == 1) vTaskDelay(pdMS_TO_TICKS(1));
 	conf_register = ADS1219_DEFAULT_CONFIG | channel_val;
 //	ESP_LOGI("ADS1219", "Configuring ADS1219 in channel %d...", channel);
 	ESP_ERROR_CHECK_WITHOUT_ABORT(ADS1219_configure(&conf_register));
 	commands = ADS1219_COMMAND_START_SYNC;
 //	ESP_LOGI("ADS1219", "Starting conversion in channel %d...", channel);
-//	vTaskDelay(pdMS_TO_TICKS(2));
 	ESP_ERROR_CHECK_WITHOUT_ABORT(ADS1219_write_commnad(&commands));
 	
 //	vTaskDelay(pdMS_TO_TICKS(1));

@@ -31,6 +31,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+//#include "i2c.h"
 #include "driver/i2c_master.h"
 
 #include "driver/gpio.h"
@@ -38,10 +39,6 @@
 #include "portmacro.h"
 #include "soc/gpio_num.h"
 
-//static const char *TAG = "I2C";
-//static const char *TAG_ADS1219_conf = "ADS1219 configuration";
-////static const char *TAG_ADS1219 = "ADS1219";
-//static const char *TAG_Process = "Pocess";
 
 #define I2C_MASTER_SCL_IO           22					        /*!< GPIO number used for I2C master clock */
 #define I2C_MASTER_SDA_IO           21					        /*!< GPIO number used for I2C master data  */
@@ -96,7 +93,6 @@ float ADS1219_read_channel_voltage(uint8_t channel);
 
 
 
-//void ADS1219_main_function(void);
 
 
 #endif /* ADS1219_H_ */

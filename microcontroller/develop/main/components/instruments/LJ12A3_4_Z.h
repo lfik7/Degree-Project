@@ -26,7 +26,6 @@
 void LJ12A3_create(gpio_num_t gpio, bool enable_intr);
 void LJ12A3_set_Callback(func_callback_t func_callback);
 bool LJ12A3_detects_Object();
-//void LJ12A3_main_function(void);
 
 
 
