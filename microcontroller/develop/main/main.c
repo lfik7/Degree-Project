@@ -29,6 +29,7 @@
 static VariablesData_t variables_data;
 static doorState_t door_data;
 static motorpumpState_t motorpump_data;
+static weightData_t weight_data;
 static bool variables_file = false;
 static bool door_file = false;
 static bool weight_file = false;
@@ -38,7 +39,6 @@ static VariablesData_t variables_data_buffer[40];
 static doorState_t door_data_buffer[20];
 static weightData_t weight_data_buffer[20];
 static motorpumpState_t motorpump_data_buffer[20];
-//static pressureThresholds_t pressure_thresholds;
 static uint8_t variables_data_buffer_index = 0;
 static uint8_t door_data_buffer_index = 0;
 static uint8_t weight_data_buffer_index = 0;
@@ -59,6 +59,7 @@ volatile bool wifi_net_changes_cloud_upload = true;			// Flag to know if the WiF
 #define UPPER_PRESS_THRESH_BIT		BIT9					// Flag to know if the pressure exceed the upper threshold
 #define LOWER_PRESS_THRESH_BIT		BIT10					// Flag to know if the pressure exceed the lower threshold
 #define MOTORPUMP_EVENT_BIT			BIT11					// Flag to know if there has been a motorpump event
+#define WEIGHT_EVENT_BIT			BIT12					// Flag to know if there has been a weight event
 
 static atomic_uint_fast32_t main_task_flags = 0;
 static atomic_bool wifi_connected = true;
@@ -86,16 +87,17 @@ void polling_upload_handler();
 void change_SI();
 void variables_event_handler();
 uint8_t upload_variables_data_buffer();
-uint8_t upload_weight_data_buffer();
 void door_event_handler();
 uint8_t upload_door_data_buffer();
+void weight_event_handler();
+uint8_t upload_weight_data_buffer();
 uint8_t upload_motorpump_data_buffer();
 void check_upload_door_weight_motorpump_data();
-void upper_pressure_threshold_hanlder();
-void lower_pressure_threshold_hanlder();
+void upper_pressure_threshold_handler();
+void lower_pressure_threshold_handler();
 void motorump_event_handler();
 void wifi_connected_handler();
-void wifi_unable_connection_hanlder();
+void wifi_unable_connection_handler();
 void wifi_nets_changes_handler();
 void store_data();
 void store_variables_data();
@@ -116,27 +118,11 @@ void wifi_disconnected_callback();
 void wifi_changes_callback();
 
 
-// /* Timer configuartion */
-//static void IRAM_ATTR timer_polling_edits_callback(void* args);
-//	
-// Define the Timer to do polling (sample interval and WiFi nets)
-//static esp_timer_handle_t timer_polling_edits = NULL;
-//static const esp_timer_create_args_t ConfigTimer_polling_edits = {
-//	.callback = timer_polling_edits_callback,
-//	.arg = NULL,
-//	.name = "timer_sample"
-//};
-
-
 // Define the Timer to free/release http client
 static StaticTimer_t xTimerPollingEditsBuffer;
 static TimerHandle_t timer_polling_edits;
 static void timer_polling_edits_callback(TimerHandle_t xTimer);
 
-// Define the Timer to free/release http client
-//static StaticTimer_t xTimerHTTPClientBuffer;
-//static TimerHandle_t Timer_HTTP_Client;
-//static void timer_http_client_callback(TimerHandle_t xTimer);
 
 // Define the Timer to free/release http client
 static StaticTimer_t xTimerStoreDataFileBuffer;
@@ -186,25 +172,23 @@ void app_main(void)
 	
 	if (FileM_get_variables_file_size() > 0){
 		ESP_LOGI("Init", "There is a variables file! Removing file...");
-//		variables_file = true;
 		FileM_remove_variables_file();
 	}
 	
 	if (FileM_get_door_file_size() > 0){
 		ESP_LOGI("Init", "There is a door file! Removing file...");
-//		door_file = true;
 		FileM_remove_door_file();
 	}
 	
 	if (FileM_get_weight_file_size() > 0){
 		ESP_LOGI("Init", "There is a weight file! Removing file...");
-//		weight_file = true;
 		FileM_remove_weight_file();
 	}
 	
 	if (FileM_get_motorpump_file_size() > 0){
 		ESP_LOGI("Init", "There is a motorpump file! Removing file...");
-//		motorpump_file = true;
+
+
 		FileM_remove_motorpump_file();
 	}
 	
@@ -214,17 +198,8 @@ void app_main(void)
     WiFi_set_wifi_nets_available(all_wifi_nets_file, sizeof(all_wifi_nets_file)/sizeof(WiFi_SSID_PSSW_t));
 	if (WiFi_init(Wifi_Net.WiFi_SSID, Wifi_Net.WiFi_PSSW) != ESP_OK){
 		ESP_LOGE("Init","Can't initialize WiFi!");
-//		return;
 	} 
-//	else{
-//		WiFi_get_current_net_connected(&Wifi_Net);
-//		if (strncmp(Wifi_Net.WiFi_SSID, current_project_settings.WiFi_SSID, sizeof(current_project_settings.WiFi_SSID)) != 0){
-//			snprintf(current_project_settings.WiFi_SSID, sizeof(current_project_settings.WiFi_SSID), "%s", Wifi_Net.WiFi_SSID);
-//		}
-//		ESP_LOGI("Init", "WiFi initialized and connected!");
-////		atomic_fetch_or(&main_task_flags, WIFI_CONNECTED_BIT);
-////		atomic_store(&wifi_connected, true);
-//	}
+
 	
 	if (!atomic_load(&wifi_connected)){
 		WiFi_set_polling_time_try_connect(120000U);
@@ -243,8 +218,6 @@ void app_main(void)
 	
 	WiFi_set_polling_time_try_connect(300000U);
 	
-//	uint32_t bits_ask = atomic_exchange(&main_task_flags, 0);
-//	if (atomic_load(&wifi_connected)){
 	
     RTCM_init();
     RTCM_obtener_hora_actual();
@@ -257,9 +230,10 @@ void app_main(void)
 	Check_update_data();
 //    ESP_LOGI("Init","Data got from the cloud!");
 	vTaskDelay(pdMS_TO_TICKS(2000));
-//	}
     
     // Start acquisition system!
+//    printf("Current thresholds_ mx: %.2f, mn: %.2f\n", current_project_settings.pressure_thresholds.max,
+//    		current_project_settings.pressure_thresholds.min);
     Acquisition_set_pressure_thresholds(current_project_settings.pressure_thresholds);
     Acquisition_start(current_project_settings.SAMP_INT);
     
@@ -269,14 +243,6 @@ void app_main(void)
 	ESP_LOGI("Init", "Sample interval setting in %ld", (long)current_project_settings.SAMP_INT*1000);
 	
 	atomic_store(&main_loop_task_started, true);
-//	if ((current_project_settings.SAMP_INT > 60) && (atomic_load(&wifi_connected))) xTimerReset(Timer_HTTP_Client, 100);
-//	if ((current_project_settings.SAMP_INT > 60)) xTimerReset(Timer_HTTP_Client, 100);
-//	if (current_project_settings.SAMP_INT > 60){
-//	if (timer_polling_edits == NULL){
-//		esp_timer_create(&ConfigTimer_polling_edits, &timer_polling_edits);
-//		esp_timer_start_periodic(timer_polling_edits, 60ULL * 1000000ULL); // 5 minutes
-//	}
-//	}
 	
 	xTimerStart(timer_polling_edits, 100);
 	
@@ -300,21 +266,23 @@ void main_loop_task(){
 			uint32_t bits_ask = atomic_exchange(&main_task_flags, 0);
 			
 			if (bits_ask & VARIABLES_EVENT_BIT){
-//				variables_event = false;
 				variables_event_handler();
 			}
 			
 			if (bits_ask & DOOR_EVENT_BIT){
-//				door_event = false;
 				door_event_handler();
 			}
 			
+			if (bits_ask & WEIGHT_EVENT_BIT){
+				weight_event_handler();
+			}
+			
 			if (bits_ask & UPPER_PRESS_THRESH_BIT){
-				upper_pressure_threshold_hanlder();
+				upper_pressure_threshold_handler();
 			}
 			
 			if (bits_ask & LOWER_PRESS_THRESH_BIT) {
-				lower_pressure_threshold_hanlder();
+				lower_pressure_threshold_handler();
 			}
 			
 			if (bits_ask & MOTORPUMP_EVENT_BIT) {
@@ -327,12 +295,10 @@ void main_loop_task(){
 			}
 			
 			if (bits_ask & POLLING_UPLOAD_BIT){
-//				check_WF_SI = false;
 				polling_upload_handler();
 			}
 			
 			if (bits_ask & WIFI_CONNECTED_CALLBACK_BIT) {
-//				wifi_connected_callback_called = false;
 				wifi_connected_handler();
 			}
 			
@@ -341,8 +307,7 @@ void main_loop_task(){
 			}
 			
 			if (bits_ask & WIFI_UNABLE_CONNECTION_BIT){
-//				wifi_unable_connection = false;
-				wifi_unable_connection_hanlder();
+				wifi_unable_connection_handler();
 			}
 			
 			if (bits_ask & WIFI_NETS_CHANGES_BIT) {
@@ -350,7 +315,6 @@ void main_loop_task(){
 			}
 			
 			if(bits_ask & RELEASE_HTTP_CLIENT_BIT){
-//				release_http_client = false;
 				check_http_client_no_released();
 			}
 
@@ -361,13 +325,11 @@ void main_loop_task(){
 
 
 void variables_event_callback(){
-//	variables_event = true;
 	atomic_fetch_or(&main_task_flags, VARIABLES_EVENT_BIT);
 	xTaskNotify(xMainTaskHandle, 1, eIncrement);
 }
 
 void door_event_callback(){
-//	door_event = true;
 	atomic_fetch_or(&main_task_flags, DOOR_EVENT_BIT);
 	if (atomic_load(&main_loop_task_started)) xTaskNotify(xMainTaskHandle, 1, eIncrement);
 }
@@ -390,16 +352,9 @@ void motorpump_event_callback(){
 
 
 void timer_polling_edits_callback(TimerHandle_t xTimer){
-//	check_WF_SI = true;
 	atomic_fetch_or(&main_task_flags, POLLING_UPLOAD_BIT);
 	xTaskNotify(xMainTaskHandle, 1, eIncrement);
 }
-
-//void timer_http_client_callback(TimerHandle_t xTimer){
-////	release_http_client = true;
-//	atomic_fetch_or(&main_task_flags, RELEASE_HTTP_CLIENT_BIT);
-//	xTaskNotify(xMainTaskHandle, 1, eIncrement);
-//}
 
 void timer_store_data_file_callback(TimerHandle_t xTimer){
 	atomic_fetch_or(&main_task_flags, STORE_DATA_FILE_BIT);
@@ -409,7 +364,6 @@ void timer_store_data_file_callback(TimerHandle_t xTimer){
 void wifi_connected_callback(){
 	atomic_store(&wifi_connected, true);
 	if (atomic_load(&main_loop_task_started)) {
-//		wifi_connected_callback_called = true;
 		atomic_fetch_or(&main_task_flags, WIFI_CONNECTED_CALLBACK_BIT);
 	 	xTaskNotify(xMainTaskHandle, 1, eIncrement);
 	 }
@@ -417,7 +371,6 @@ void wifi_connected_callback(){
 
 void wifi_unable_connection_callback(){
 	if (atomic_load(&main_loop_task_started)) {
-//		wifi_unable_connection = true;
 		atomic_fetch_or(&main_task_flags, WIFI_UNABLE_CONNECTION_BIT);
 		xTaskNotify(xMainTaskHandle, 1, eIncrement);
 	}
@@ -442,7 +395,6 @@ void check_http_client_released(){
 		Cloud_init();
 		http_client_released = false;
 	}
-//	if (release_http_client) release_http_client = false;
 }
 
 void check_http_client_no_released(){
@@ -467,14 +419,6 @@ void stop_timer_store_data(){
 }
 
 void variables_event_handler(){
-	
-	bool weight_change = false;
-		
-	if (variables_data.weight != current_project_settings.Weight){ 
-		current_project_settings.Weight = variables_data.weight;
-		FileM_store_new_settings(&current_project_settings);
-		weight_change = true;
-	}
 	
 	if (atomic_load(&wifi_connected)){
 		check_http_client_released();
@@ -519,51 +463,11 @@ void variables_event_handler(){
 			}
 		}
 		
-		if (weight_change){
-			if (!weight_file){
-				if (weight_data_buffer_index == 0){
-					if (!cloud_post_food_weight(variables_data.weight, variables_data.timestamp)){
-						ESP_LOGE("Variables_hand", "No se pudo subir los datos del peso a la nube");
-						weight_data_buffer[weight_data_buffer_index].weight = variables_data.weight;
-						weight_data_buffer[weight_data_buffer_index].timestamp = variables_data.timestamp;
-						weight_data_buffer_index ++;
-						if (weight_data_buffer_index == 20) store_weight_data();
-					}		
-				} 
-				else {
-					weight_data_buffer[weight_data_buffer_index].weight = variables_data.weight;
-					weight_data_buffer[weight_data_buffer_index].timestamp = variables_data.timestamp;
-					weight_data_buffer_index ++;
-					
-					upload_weight_data_buffer();
-				}
-			}
-			if (!Cloud_update_current_settings(&current_project_settings, "W")){
-				ESP_LOGE("Variables_hand", "No se pudo actualizar los datos de configuración en la nube");
-			}
-		}
-		
-//		if (current_project_settings.SAMP_INT <= 60){
-////			check_WF_SI = true;
-//			atomic_fetch_or(&main_task_flags, POLLING_UPLOAD_BIT);
-//			xTaskNotify(xMainTaskHandle, 1, eIncrement);
-//		} 
-//		else{
-//			if (current_project_settings.SAMP_INT > 60) xTimerReset(Timer_HTTP_Client, 100);
-//		}
-		
 	} 
 	else {
 		printf("WiFi not connected! Can't upload sensors data!\n");
 		variables_data_buffer[variables_data_buffer_index] = variables_data;
 		variables_data_buffer_index ++;
-		
-		if (weight_change){
-			weight_data_buffer[weight_data_buffer_index].weight = variables_data.weight;
-			weight_data_buffer[weight_data_buffer_index].timestamp = variables_data.timestamp;
-			weight_data_buffer_index ++;
-			if (weight_data_buffer_index == 20) store_weight_data();
-		}
 	}
 }
 
@@ -605,48 +509,24 @@ uint8_t upload_variables_data_buffer(){
 	return iter;
 }
 
-uint8_t upload_weight_data_buffer(){
-	ESP_LOGI("Upload weight","Upload weight data to the cloud!");
-	uint8_t iter;
-	for (iter = 0; iter < weight_data_buffer_index; iter ++){
-		uint8_t tries = 0;
-		do{
-			if (cloud_post_food_weight(weight_data_buffer[iter].weight, weight_data_buffer[iter].timestamp)){
-				break;
-			}
-			ESP_LOGE("Upload weight", "No se pudo subir los datos del peso a la nube");
-			tries ++;
-		}while (tries < 3);
-		if (tries == 3) break;
-	}
-	if (iter < weight_data_buffer_index && iter > 0) {
-		ESP_LOGI("Upload weight", "Corriendo datos del buffer...");
-		for (uint8_t an_iter = 0; an_iter < weight_data_buffer_index - iter; an_iter ++) {
-			weight_data_buffer[an_iter] = weight_data_buffer[an_iter + iter];
-		}
-		weight_data_buffer_index -= iter;
-		ESP_LOGI("Upload weight", "Se aconseja guadar los datos del buffer (peso) en un archivo! (1)");
-	} 
-	else if (iter == weight_data_buffer_index){
-		ESP_LOGI("Upload weight", "%u datos del buffer subidos correctamente!", (uint) weight_data_buffer_index);
-		weight_data_buffer_index = 0;
-	} 
-	else if (iter == 0){
-		if (weight_data_buffer_index == 20) {
-			store_weight_data();
-		}
-		else {
-			ESP_LOGI("Upload weight", "Se aconseja guadar los datos del buffer (peso) en un archivo! (2)");
-		}
-	}
-	return iter;
-}
-
 
 void door_event_handler(){
 	
 	current_project_settings.Door = door_data.state;
 	FileM_store_new_settings(&current_project_settings);
+	
+	if (!door_data.state) {
+		Acquisition_check_pressure();
+		weight_data.weight = Acquisition_food_weight();
+		weight_data.timestamp = door_data.timestamp;
+		atomic_fetch_or(&main_task_flags, WEIGHT_EVENT_BIT);
+		xTaskNotify(xMainTaskHandle, 1, eIncrement);
+	}
+	else {
+		if (motorpump_data.state) {
+			Motorpump_turn_off();
+		}
+	}
 	
 	if (atomic_load(&wifi_connected)){
 		
@@ -669,7 +549,6 @@ void door_event_handler(){
 			
 		Cloud_update_current_settings(&current_project_settings, "D");
 		 
-//		if (current_project_settings.SAMP_INT > 60) xTimerReset(Timer_HTTP_Client, 100);
 	} 
 	else {
 		printf("WiFi not connected! Can't upload door data!\n");
@@ -718,6 +597,83 @@ uint8_t upload_door_data_buffer(){
 	return iter;
 }
 
+void weight_event_handler() {
+	
+	current_project_settings.Weight = weight_data.weight;
+	FileM_store_new_settings(&current_project_settings);
+	
+	if (atomic_load(&wifi_connected)){
+		check_http_client_released();
+		if (!weight_file){
+			if (weight_data_buffer_index == 0){
+				if (!cloud_post_food_weight(weight_data.weight, weight_data.timestamp)){
+					ESP_LOGE("Weight_hand", "No se pudo subir los datos del peso a la nube");
+					weight_data_buffer[weight_data_buffer_index].weight = weight_data.weight;
+					weight_data_buffer[weight_data_buffer_index].timestamp = weight_data.timestamp;
+					weight_data_buffer_index ++;
+					if (weight_data_buffer_index == 20) store_weight_data();
+				}		
+			} 
+			else {
+				weight_data_buffer[weight_data_buffer_index].weight = weight_data.weight;
+				weight_data_buffer[weight_data_buffer_index].timestamp = weight_data.timestamp;
+				weight_data_buffer_index ++;
+				
+				upload_weight_data_buffer();
+			}
+		}
+		if (!Cloud_update_current_settings(&current_project_settings, "w")){
+			ESP_LOGE("Weight_hand", "No se pudo actualizar los datos de configuración en la nube");
+		}
+		
+	} 
+	else {
+		printf("WiFi not connected! Can't upload weight data!\n");
+		
+		weight_data_buffer[weight_data_buffer_index].weight = weight_data.weight;
+		weight_data_buffer[weight_data_buffer_index].timestamp = weight_data.timestamp;
+		weight_data_buffer_index ++;
+		if (weight_data_buffer_index == 20) store_weight_data();
+	}
+}
+
+uint8_t upload_weight_data_buffer(){
+	ESP_LOGI("Upload weight","Upload weight data to the cloud!");
+	uint8_t iter;
+	for (iter = 0; iter < weight_data_buffer_index; iter ++){
+		uint8_t tries = 0;
+		do{
+			if (cloud_post_food_weight(weight_data_buffer[iter].weight, weight_data_buffer[iter].timestamp)){
+				break;
+			}
+			ESP_LOGE("Upload weight", "No se pudo subir los datos del peso a la nube");
+			tries ++;
+		}while (tries < 3);
+		if (tries == 3) break;
+	}
+	if (iter < weight_data_buffer_index && iter > 0) {
+		ESP_LOGI("Upload weight", "Corriendo datos del buffer...");
+		for (uint8_t an_iter = 0; an_iter < weight_data_buffer_index - iter; an_iter ++) {
+			weight_data_buffer[an_iter] = weight_data_buffer[an_iter + iter];
+		}
+		weight_data_buffer_index -= iter;
+		ESP_LOGI("Upload weight", "Se aconseja guadar los datos del buffer (peso) en un archivo! (1)");
+	} 
+	else if (iter == weight_data_buffer_index){
+		ESP_LOGI("Upload weight", "%u datos del buffer subidos correctamente!", (uint) weight_data_buffer_index);
+		weight_data_buffer_index = 0;
+	} 
+	else if (iter == 0){
+		if (weight_data_buffer_index == 20) {
+			store_weight_data();
+		}
+		else {
+			ESP_LOGI("Upload weight", "Se aconseja guadar los datos del buffer (peso) en un archivo! (2)");
+		}
+	}
+	return iter;
+}
+
 
 void motorump_event_handler() {
 	
@@ -752,7 +708,6 @@ void motorump_event_handler() {
 			
 		Cloud_update_current_settings(&current_project_settings, "M");
 		 
-//		if (current_project_settings.SAMP_INT > 60) xTimerReset(Timer_HTTP_Client, 100);
 	} 
 	else {
 		printf("WiFi not connected! Can't upload motorpump data!\n");
@@ -884,13 +839,15 @@ void check_upload_door_weight_motorpump_data(){
 
 
 
-void upper_pressure_threshold_hanlder() {
+void upper_pressure_threshold_handler() {
 	printf("The pressure is upper than threshold. Please turn on the motorpump!\n");
+	ESP_LOGI("UPPER_PRESSURE_THERSHOLD_HANDLER","Pressure: %.3f kPa", variables_data.pressure);
 	Motorpump_turn_on();
 }
 
-void lower_pressure_threshold_hanlder() {
+void lower_pressure_threshold_handler() {
 	printf("The pressure is lower than threshold. Please turn off the motorpump!\n");
+	ESP_LOGI("LOWER_PRESSURE_THERSHOLD_HANDLER","Pressure: %.3f kPa", variables_data.pressure);
 	Motorpump_turn_off();
 }
 
@@ -904,18 +861,13 @@ void wifi_connected_handler(){
 	check_http_client_released();
 	Check_update_data();
 	check_upload_door_weight_motorpump_data();
-//	if (current_project_settings.SAMP_INT > 60) xTimerReset(Timer_HTTP_Client, 100);
-	// Here can go the logic to upload the data of the sensors (which could not be upload before)
 }
 
 
 
-void wifi_unable_connection_hanlder(){
+void wifi_unable_connection_handler(){
 	atomic_store(&wifi_connected,false);
 	check_http_client_no_released();
-//	if (xTimerIsTimerActive(Timer_HTTP_Client) != pdFALSE) {
-//	    xTimerStop(Timer_HTTP_Client, 0);
-//	}
 }
 
 void wifi_nets_changes_handler() {
@@ -941,9 +893,6 @@ void wifi_nets_changes_handler() {
 		else {
 			ESP_LOGE("WiFi_NETS_CHANGES", "Could not upload the WiFi nets changes!");
 		}
-		
-		
-//		if (current_project_settings.SAMP_INT > 60) xTimerReset(Timer_HTTP_Client, 100);
 	}
 }
 
@@ -952,15 +901,12 @@ void polling_upload_handler(){
 	if (atomic_load(&wifi_connected)){
 		check_http_client_released();
 		polling_upload();
-//		if (current_project_settings.SAMP_INT > 60) xTimerReset(Timer_HTTP_Client, 100);
 	}
 }
 
 
 void polling_upload(){
-//	long long samp_int = 0;
 	const char* TAG_Function = "Polling_Upload";
-
 
 	check_sample_interval();
 	
@@ -975,21 +921,7 @@ void polling_upload(){
 }
 
 
-void change_SI(){
-	
-//	if (current_project_settings.SAMP_INT > 60){
-//		if (timer_polling_edits == NULL){
-//			esp_timer_create(&ConfigTimer_polling_edits, &timer_polling_edits);
-//			esp_timer_start_periodic(timer_polling_edits, 60ULL * 1000000ULL); // 5 minutes
-//		}
-//	} else{
-//		if (timer_polling_edits != NULL){
-//			esp_timer_stop(timer_polling_edits);
-//			esp_timer_delete(timer_polling_edits);
-//			timer_polling_edits = NULL;
-//		}
-//	}
-	
+void change_SI(){	
 	Acquisition_set_sample_interval(current_project_settings.SAMP_INT);
 }
 
@@ -1029,7 +961,6 @@ void check_current_settings(){
 	char fields[5] = {'\0', '\0', '\0', '\0', '\0'};
 	int field_pointer = 0;
 	bool motorpump = false;
-	float weight = 0.0;
 	doorState_t door_data_sens = {false, 0};
 	
 	
@@ -1040,10 +971,11 @@ void check_current_settings(){
 	
 	
 	door_data_sens.state = Acquisition_door_state();
-	weight = Acquisition_food_weight();
+	weight_data.weight = Acquisition_food_weight();
 	time_t timestamp;
 	time(&timestamp);
 	door_data_sens.timestamp = timestamp;
+	weight_data.timestamp = timestamp;
 	
 //	ESP_LOGI("CHECKING_UPDATE", "Checking door...");
 	if (door_data_sens.state != current_project_settings.Door){
@@ -1059,16 +991,16 @@ void check_current_settings(){
 	}
 	
 //	ESP_LOGI("CHECKING_UPDATE", "Checking weight...");
-	if (weight != current_project_settings.Weight){
-		current_project_settings.Weight = weight;
-		change_settings = true;
+	if (weight_data.weight != current_project_settings.Weight){
+		current_project_settings.Weight = weight_data.weight;
+		weight_data.weight = true;
 	}
-	if (weight != settings_in_cloud.Weight){
-		settings_in_cloud.Weight = weight;
+	if (weight_data.weight != settings_in_cloud.Weight){
+		settings_in_cloud.Weight = weight_data.weight;
 		fields[field_pointer] = 'w';
 		field_pointer ++;
 		change_settings = true;
-		cloud_post_food_weight(weight, (long long)timestamp);
+		cloud_post_food_weight(weight_data.weight, (long long)timestamp);
 	}
 	
 //	ESP_LOGI("CHECKING_UPDATE", "Checking motorpump...");
@@ -1090,6 +1022,13 @@ void check_current_settings(){
 				current_project_settings.WiFi_SSID);
 		change_settings = true;
 		fields[field_pointer] = 'W';
+	}
+	
+	if (settings_in_cloud.pressure_thresholds.min != current_project_settings.pressure_thresholds.min || settings_in_cloud.pressure_thresholds.max != current_project_settings.pressure_thresholds.max) {
+		ESP_LOGI(TAG_Function, "Pressure thresholds are different!");
+		settings_in_cloud.pressure_thresholds = current_project_settings.pressure_thresholds;
+		change_settings = true;
+		fields[field_pointer] = 'P';
 	}
 	
 	if (change_settings){
@@ -1199,8 +1138,6 @@ void Check_update_data(){
 	check_current_settings();
 	
 	check_sample_interval();
-	
-	check_pressure_thresholds();
 	
 	check_wifi_nets(false);
 	
