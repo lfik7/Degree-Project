@@ -9,13 +9,6 @@ import 'package:proyecto_receptaculo/ui/login.dart';
 import 'package:proyecto_receptaculo/control/cloud_manager.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:proyecto_receptaculo/globals/variables.dart';
-// import 'package:proyecto_receptaculo/core/auth_service.dart';
-// import 'package:flutter/foundation.dart';
-
-// Create apk: flutter build apk --release --obfuscate --split-debug-info=build/symbols
-// android/app/src/main/AndroidManifest.xml: <uses-permission android:name="android.permission.INTERNET" />
-//   email: "lotfik47@hotmail.com",
-//   password: "Ldv.981006",
 
 // Título y color primario de la aplicación. Se usan en el tema global.
 String appTitle = 'Silo minder';
@@ -102,9 +95,6 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
-
-    var hellowWorld = HelloWorld();
-    debugPrint(hellowWorld.greet());
 
     if (isLandscape) {
       return Scaffold(
