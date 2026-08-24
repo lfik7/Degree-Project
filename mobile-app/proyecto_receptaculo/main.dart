@@ -18,8 +18,6 @@ CloudManager cloudManager = CloudManager();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // Forzamos el login antes de cargar la interfaz
-  // await FirebaseAuth.instance.signOut();
 
   userLogged.value = FirebaseAuth.instance.currentUser != null ? true : false;
 
@@ -47,12 +45,9 @@ class MyApp extends StatelessWidget {
 class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Aquí consultas si hay un usuario activo (ej. en Firebase o SharedPreferences)
     return ValueListenableBuilder(
       valueListenable: userLogged,
       builder: (context, value, child) {
-        // bool isLoggedIn = checkUserSession();
-
         if (value) {
           Future.wait([cloudManager.initializingCloudManager()]);
           return MyHomePage(title: appTitle);
@@ -78,7 +73,6 @@ class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
 
   static const List<Widget> _pages = <Widget>[
-    // LoginScreen(),
     StadisticsPage(),
     AlarmsPage(),
     ControlPage(),
