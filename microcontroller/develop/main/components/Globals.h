@@ -35,7 +35,6 @@ typedef struct {
 	float gas_oh;			// mix ads1219 ch0/1/2 (mq135/3/2)
 	float gas_co2;			// mix ads1219 ch0/1/2 (mq135/3/2)
 	float gas_nit;			// mix ads1219 ch0/1/2 (mq135/3/2)
-	float weight;				// hx711 cha (celda)
     long long timestamp;
 }VariablesData_t;
 

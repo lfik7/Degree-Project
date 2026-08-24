@@ -29,8 +29,6 @@ void RTCM_obtener_hora_actual(void);
 
 
 
-void RTC_main_function(void);
-
 
 
 

@@ -25,8 +25,8 @@ extern const uint8_t root_ca_pem_end[]   asm("_binary_root_ca_pem_end");
 static const char *TAG_HTTPS = "HTTPS_CLIENT", *TAG_CLOUDM = "CLOUDM";
 
 
-static const char* FIREBASE_URL = "";
-static const char* FIREBASE_AUTH = "";
+static const char* FIREBASE_URL = "https://proyecto-receptaculo-default-rtdb.firebaseio.com/";
+static const char* FIREBASE_AUTH = "?auth=oDQJsD2ff832SPDK0GlDig2ujRC7nMTvKkDYhKKn";
 static const char* full_url_template = "%s%s.json%s"; 
 static char full_url[512];
 
@@ -46,7 +46,6 @@ static esp_err_t Cloud_post_log(const char* node_path, const char* json_string);
 static esp_err_t Cloud_post_log_careful(const char* node_path, const char* json_string);
 static esp_err_t Cloud_patch_data(const char* node_path, const char* json_string);
 static esp_err_t Cloud_patch_data_careful(const char* node_path, const char* json_string);
-//static esp_err_t Cloud_delete_node(const char* node_path);
 
 void Cloud_init(){
     
@@ -96,53 +95,8 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
                 output_len += evt->data_len;
                 cloud_answer[output_len] = '\0'; // Aseguramos que siempre sea un string válido
             }
-//            // Clean the buffer in case of a new request
-//            if (output_len == 0 && evt->user_data) {
-//                // we are just starting to copy the output data into the use
-//                memset(evt->user_data, 0, MAX_HTTP_OUTPUT_BUFFER);
-//            }
-//            /*
-//             *  Check for chunked encoding is added as the URL for chunked encoding used in this example returns binary data.
-//             *  However, event handler can also be used in case chunked encoding is used.
-//             */
-//            if (!esp_http_client_is_chunked_response(evt->client)) {
-//                // If user_data buffer is configured, copy the response into the buffer
-//                int copy_len = 0;
-//                if (evt->user_data) {
-//                    // The last byte in evt->user_data is kept for the NULL character in case of out-of-bound access.
-//                    copy_len = MIN(evt->data_len, (MAX_HTTP_OUTPUT_BUFFER - output_len));
-//                    if (copy_len) {
-//                        memcpy(evt->user_data + output_len, evt->data, copy_len);
-//                    }
-//                } else {
-//                    int content_len = esp_http_client_get_content_length(evt->client);
-//                    if (output_buffer == NULL) {
-//                        // We initialize output_buffer with 0 because it is used by strlen() and similar functions therefore should be null terminated.
-//                        output_buffer = (char *) calloc(content_len + 1, sizeof(char));
-//                        output_len = 0;
-//                        if (output_buffer == NULL) {
-//                            ESP_LOGE(TAG_HTTPS, "Failed to allocate memory for output buffer");
-//                            return ESP_FAIL;
-//                        }
-//                    }
-//                    copy_len = MIN(evt->data_len, (content_len - output_len));
-//                    if (copy_len) {
-//                        memcpy(output_buffer + output_len, evt->data, copy_len);
-//                    }
-//                }
-//                output_len += copy_len;
-//            }
-
             break;
         case HTTP_EVENT_ON_FINISH:
-//            ESP_LOGI(TAG_HTTPS, "HTTP_EVENT_ON_FINISH");
-//            if (output_buffer != NULL) {
-//#if CONFIG_EXAMPLE_ENABLE_RESPONSE_BUFFER_DUMP
-//                ESP_LOG_BUFFER_HEX(TAG, output_buffer, output_len);
-//#endif
-//                free(output_buffer);
-//                output_buffer = NULL;
-//            }
             output_len = 0;
             break;
         case HTTP_EVENT_DISCONNECTED:
@@ -154,11 +108,6 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
                 ESP_LOGI(TAG_HTTPS, "Last esp error code: 0x%x", err);
                 ESP_LOGI(TAG_HTTPS, "Last mbedtls failure: 0x%x", mbedtls_err);
             }
-//            if (output_buffer != NULL) {
-//                free(output_buffer);
-//                output_buffer = NULL;
-//            }
-//            output_len = 0;
             break;
         case HTTP_EVENT_REDIRECT:
 //            ESP_LOGI(TAG_HTTPS, "HTTP_EVENT_REDIRECT");
@@ -304,22 +253,6 @@ static esp_err_t Cloud_patch_data_careful(const char* node_path, const char* jso
 	
 }
 
-//esp_err_t Cloud_delete_node(const char* node_path) {
-//	if (cloud_client == NULL) return ESP_ERR_INVALID_STATE;
-//	
-//	memset(cloud_answer, 0, sizeof(cloud_answer));
-//	
-//	memset(full_url, 0, sizeof(full_url));
-//	snprintf(full_url, sizeof(full_url), full_url_template, FIREBASE_URL, node_path, FIREBASE_AUTH);
-//    
-//
-//	esp_http_client_set_post_field(cloud_client,NULL, 0);
-//    esp_http_client_set_url(cloud_client, full_url);
-//    esp_http_client_set_method(cloud_client, HTTP_METHOD_DELETE);
-//    
-//    return esp_http_client_perform(cloud_client);
-//}
-
 
 bool Cloud_get_current_settigns(current_settigns_t* settings){
     const char* node_path = "Current_Settings";
@@ -448,8 +381,6 @@ bool Cloud_get_wifi_nets_edits(bool * edited){
 
 bool Cloud_upload_wifi_nets(WiFi_SSID_PSSW_t* wifi_nets, uint8_t quantity_positions) {
     const char* node_path = "WiFi_Nets/Nets";
-	
-//	memset(put_data, 0, sizeof(put_data));
 
 	int current_buff_len = 1;
 	put_data[0] = '{';
@@ -459,7 +390,6 @@ bool Cloud_upload_wifi_nets(WiFi_SSID_PSSW_t* wifi_nets, uint8_t quantity_positi
 	uint8_t iter;
 	
 	for(iter = 0; iter < quantity_positions; iter ++){
-//		if (wifi_nets[iter].WiFi_SSID[0] == '\0') break;
 		const char* separator = first_field ? "": ",";
 		writen = snprintf(put_data + current_buff_len, sizeof(put_data) - current_buff_len, 
 							"%s\"N%u\":{\"ID\":\"%s\",\"PS\":\"%s\"}", separator, iter + 1, 
@@ -535,8 +465,7 @@ bool Cloud_post_door_state(doorState_t* door_data ){
 	
 	snprintf(node_path, sizeof(node_path), "Data_events/Door/%d/%d/%d", timeinfo.tm_year+1900, timeinfo.tm_mon+1, 
 				timeinfo.tm_mday);
-	
-//	char post_data_log[300];
+
 	snprintf(post_data_log, sizeof(post_data_log), "{\"t\":%lld,\"st\":%s}",
 			door_data->timestamp, door_data->state?"true":"false");
 	
@@ -556,7 +485,6 @@ bool Cloud_post_motorpump_state(bool state, long long timestamp){
 	snprintf(node_path, sizeof(node_path), "Data_events/MoPu/%d/%d/%d", timeinfo.tm_year+1900, timeinfo.tm_mon+1, 
 				timeinfo.tm_mday);
 	
-//	char post_data_log[300];
 	snprintf(post_data_log, sizeof(post_data_log), "{\"t\":%lld,\"st\":%s}",
 			timestamp, state?"true":"false");
 	
@@ -575,7 +503,6 @@ bool cloud_post_food_weight(float weight, long long timestamp){
 	snprintf(node_path, sizeof(node_path), "Data_events/Weig/%d/%d/%d", timeinfo.tm_year+1900, 
 				timeinfo.tm_mon+1, timeinfo.tm_mday);
 	
-//	char post_data_log[300];
 	snprintf(post_data_log, sizeof(post_data_log), "{\"t\":%lld,\"vl\":%.1f}",
 			timestamp, weight);
 	
@@ -635,7 +562,6 @@ bool Cloud_update_current_settings(current_settigns_t* settings, const char* fie
 		}
 	}
 	
-//	current_buff_len = strlen(patch_data);
 	snprintf(patch_data + current_buff_len, sizeof(patch_data) - current_buff_len, "}");	
 	
 	
@@ -692,7 +618,6 @@ bool Cloud_update_monitor_presence(){
 	
 	return true;
 }
-
 
 
 

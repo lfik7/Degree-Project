@@ -19,15 +19,6 @@ static const char *TAG_NTP = "RTCM";
 
 
 
-void RTC_main_function(void)
-{
-    
-    RTCM_initialize_sntp();
-    RTCM_obtener_hora_actual();
-    ESP_LOGI(TAG_NTP, "Configuracion de hora terminada!");
-
-}
-
 void RTCM_init(){
 	RTCM_initialize_sntp();
 	if(RTCM_sync_time() != ESP_OK){

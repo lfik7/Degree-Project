@@ -119,12 +119,16 @@ void FileM_get_current_settings(current_settigns_t* settigns){
 	
 //	ESP_LOGI(TAG_FileM,"Cargando archivo %s:\n", path);
     FILE* f = fopen(path, "r");
-    if (f == NULL) return;
+    if (f == NULL) {
+//		printf("There is not any file 'Current_Settings.csv\n");
+		return;
+	}
 
     char line[128];
 
     while (fgets(line, sizeof(line), f)) {
         // Ignorar comentarios o líneas vacías
+//        printf("Line: %s\n", line);
         if (line[0] == '#' || line[0] == '\n') continue;
 
         // sscanf busca el formato: texto hasta la coma, saltar coma, texto hasta el final
@@ -133,18 +137,13 @@ void FileM_get_current_settings(current_settigns_t* settigns){
         float weight, presTH_min, presTH_max;
 
         if (sscanf(line, "%31[^,],%d,%d,%d,%f,%f,%f", settigns->WiFi_SSID, &samp_int, &door, &motorpump, 
-        	&weight, &presTH_min, &presTH_max) == 5) {
+        	&weight, &presTH_min, &presTH_max) == 7) {
 			settigns->SAMP_INT = samp_int;
 			settigns->Door = (bool)door;
 			settigns->Motorpump = (bool)motorpump;
 			settigns->Weight = weight;
 			settigns->pressure_thresholds.min = presTH_min;
 			settigns->pressure_thresholds.max = presTH_max;
-//            printf("\tSSID cargado: %s\n", Cur_set->WiFi_SSID);
-//            printf("\tIntervalo de muestreo cargado (s): %d\n", Cur_set->SAMP_INT);
-//            printf("\tEstado de la puerta: %s\n", (Cur_set->Door)?"abierta":"cerrada");
-//            printf("\tEstado de la motorpump: %s\n", (Cur_set->Motorpump)?"activa":"inactiva");
-//            printf("\tPeso del silo (kg): %.2f\n", Cur_set->Weight);
         }
         break;
     }
@@ -326,14 +325,6 @@ bool FileM_get_variables_data(VariablesData_t* data, uint8_t* data_size){
     if (data_size_readed == 40){ 			// If data_size_readed is equal to 40, it means there is more data
     	return false;  
     } 
-//    while (fread(&temp_data, sizeof(VariablesData_t), 1, variables_file) == 1) {
-//        printf("Registro %d:\n", registro++);
-//        printf("  Timestamp: %lu\n", (long)temp_data.timestamp);
-//        printf("  \tValores: \n\t\t S1: %.2f \n\t\t S2: %.2f \n\t\t S3: %.2f \n\t\t S4: %.2f  \n\t\t S5: %.2f  \n\t\t S6: %.2f \n\t\t S7: %.2f\n", 
-//                temp_data.valores[0], temp_data.valores[1], temp_data.valores[2], temp_data.valores[3], temp_data.valores[4], temp_data.valores[5], temp_data.valores[6]);
-
-//    }
-//    printf("\n");
 	return true;
 }
 
@@ -397,14 +388,6 @@ bool FileM_get_door_data(doorState_t* data, uint8_t* data_size){
     if (data_size_readed == 20){ 			// If data_size_readed is equal to 20, it means there is more data
     	return false;  
     } 
-//    while (fread(&temp_data, sizeof(VariablesData_t), 1, variables_file) == 1) {
-//        printf("Registro %d:\n", registro++);
-//        printf("  Timestamp: %lu\n", (long)temp_data.timestamp);
-//        printf("  \tValores: \n\t\t S1: %.2f \n\t\t S2: %.2f \n\t\t S3: %.2f \n\t\t S4: %.2f  \n\t\t S5: %.2f  \n\t\t S6: %.2f \n\t\t S7: %.2f\n", 
-//                temp_data.valores[0], temp_data.valores[1], temp_data.valores[2], temp_data.valores[3], temp_data.valores[4], temp_data.valores[5], temp_data.valores[6]);
-
-//    }
-//    printf("\n");
 	return true;
 }
 
@@ -468,14 +451,6 @@ bool FileM_get_weight_data(weightData_t* data, uint8_t* data_size){
     if (data_size_readed == 20){ 			// If data_size_readed is equal to 20, it means there is more data
     	return false;  
     } 
-//    while (fread(&temp_data, sizeof(VariablesData_t), 1, variables_file) == 1) {
-//        printf("Registro %d:\n", registro++);
-//        printf("  Timestamp: %lu\n", (long)temp_data.timestamp);
-//        printf("  \tValores: \n\t\t S1: %.2f \n\t\t S2: %.2f \n\t\t S3: %.2f \n\t\t S4: %.2f  \n\t\t S5: %.2f  \n\t\t S6: %.2f \n\t\t S7: %.2f\n", 
-//                temp_data.valores[0], temp_data.valores[1], temp_data.valores[2], temp_data.valores[3], temp_data.valores[4], temp_data.valores[5], temp_data.valores[6]);
-
-//    }
-//    printf("\n");
 	return true;
 }
 
@@ -539,14 +514,6 @@ bool FileM_get_motorpump_data(motorpumpState_t* data, uint8_t* data_size){
     if (data_size_readed == 20){ 			// If data_size_readed is equal to 20, it means there is more data
     	return false;  
     } 
-//    while (fread(&temp_data, sizeof(VariablesData_t), 1, variables_file) == 1) {
-//        printf("Registro %d:\n", registro++);
-//        printf("  Timestamp: %lu\n", (long)temp_data.timestamp);
-//        printf("  \tValores: \n\t\t S1: %.2f \n\t\t S2: %.2f \n\t\t S3: %.2f \n\t\t S4: %.2f  \n\t\t S5: %.2f  \n\t\t S6: %.2f \n\t\t S7: %.2f\n", 
-//                temp_data.valores[0], temp_data.valores[1], temp_data.valores[2], temp_data.valores[3], temp_data.valores[4], temp_data.valores[5], temp_data.valores[6]);
-
-//    }
-//    printf("\n");
 	return true;
 }
 

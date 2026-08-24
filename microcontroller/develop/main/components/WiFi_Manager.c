@@ -85,8 +85,6 @@ static void callback_timer_wifi_sta_reconnection(TimerHandle_t xTimer);
 esp_err_t WiFi_init(const char* wifi_id, const char* wifi_pass)
 {
 	ESP_LOGI("WiFi_INIT", "Connected to net \"%s\" and password \"%s\"", wifi_id, wifi_pass);
-	
-//	WiFi_set_wifi_nets_available(all_wifi_nets);
 
 	strcpy(WIFI_SSID, wifi_id);
 	strcpy(WIFI_PASS, wifi_pass);
@@ -151,17 +149,17 @@ void wifi_ap_event_handler(void *arg, esp_event_base_t event_base, int32_t event
 
 void wifi_init_sta_ap(void)
 {
-    // 2. Inicializar stack de red
+    // Inicializar stack de red
     esp_netif_init();
 
-    // 3. Manejo de eventos
+    // Manejo de eventos
     esp_event_loop_create_default();
 
     // Crear interfaz WiFi STA
     esp_netif_create_default_wifi_sta();
     esp_netif_create_default_wifi_ap();
 
-    // 4. Config WiFi
+    // Config WiFi
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&cfg);
 
@@ -171,7 +169,6 @@ void wifi_init_sta_ap(void)
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_ap_event_handler, NULL);
 
     // Configurar modo estación
-//    esp_wifi_set_mode(WIFI_MODE_STA);
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
 
     // Configuración del SSID y contraseña
@@ -181,7 +178,7 @@ void wifi_init_sta_ap(void)
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_sta_config));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_ap_config));
 
-    // 5. Iniciar WiFi
+    // Iniciar WiFi
     ESP_ERROR_CHECK(esp_wifi_start());
 }
 
@@ -236,7 +233,6 @@ void wifi_sta_task_handler(){
 				    wifi_nets_available_index ++;
 				} else {
 					ESP_LOGE( TAG_WiFi_STA, "Unable to connect to any available WiFi nets!");
-//					xTimerReset(Timer_WiFi_STA_Reconnection, 100);
 					xEventGroupSetBits(wifi_sta_event_group, WIFI_WIFI_STA_FAIL_CONNECTION_BIT);
 					wifi_sta_unable_connection_callback();
 				}
@@ -367,7 +363,6 @@ void tcp_task_handler(){
 
 void tcp_process_task_handler(){
 	
-//	static char process_buffer[128];
 	static char tcp_tx_buffer[128];
 	tcp_packet_t packet;
 	WiFi_SSID_PSSW_t wifi_net;
@@ -455,6 +450,18 @@ void tcp_process_task_handler(){
 							send(packet.socket, tcp_tx_buffer, strlen(tcp_tx_buffer), 0);
 						}
 						break;
+						
+					case 'n':
+						int net_number = -1;
+						sscanf(packet.buffer+2, "%d", &net_number);
+						net_number --;
+						printf("The user wants to put a WiFi net in net %d:\n", net_number);
+						sscanf(packet.buffer+3, "%31[^,],%31[^;\n]",wifi_net.WiFi_SSID, wifi_net.WiFi_PSSW);
+						strncpy(wifi_nets_available[net_number].WiFi_SSID, wifi_net.WiFi_SSID, sizeof(wifi_nets_available[net_number].WiFi_SSID)); 
+						strncpy(wifi_nets_available[net_number].WiFi_PSSW, wifi_net.WiFi_PSSW, sizeof(wifi_nets_available[net_number].WiFi_PSSW));
+						printf("\tSSID: %s\n\tPASS: %s\n",wifi_nets_available[net_number].WiFi_SSID, wifi_nets_available[net_number].WiFi_PSSW);
+						change_wifi_nets = true;
+						break;
 					
 					case 's':		// Send all WiFi nets
 						printf("The user wants to know the available wifi nets\n");
@@ -512,7 +519,6 @@ void WiFi_set_wifi_nets_available(WiFi_SSID_PSSW_t * all_wifi_nets, uint8_t quan
 		memset(wifi_nets_available[iter].WiFi_PSSW, 0, sizeof(wifi_nets_available[iter].WiFi_PSSW));
 		strncpy(wifi_nets_available[iter].WiFi_SSID, all_wifi_nets[iter].WiFi_SSID, sizeof(wifi_nets_available[iter].WiFi_SSID) - 1);
 		strncpy(wifi_nets_available[iter].WiFi_PSSW, all_wifi_nets[iter].WiFi_PSSW, sizeof(wifi_nets_available[iter].WiFi_PSSW) - 1);
-		printf("WiFi net available %d:\n\tID: %s\n\tPS: %s\n", (int)iter+1, wifi_nets_available[iter].WiFi_SSID, wifi_nets_available[iter].WiFi_PSSW);
 	}
 	
 }

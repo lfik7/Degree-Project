@@ -6,26 +6,40 @@
  */
 
 #include "Acquisition_Manager.h"
+#include "Globals.h"
 #include "LJ12A3_4_Z.h"
 #include "esp_bit_defs.h"
 #include "esp_err.h"
+#include "esp_private/sar_periph_ctrl.h"
 #include "freertos/idf_additions.h"
 #include "freertos/projdefs.h"
+#include "instruments/ADS1219.h"
+#include "instruments/HX711.h"
 #include "portmacro.h"
 #include "esp_timer.h"
 #include <stdatomic.h>
+#include "math.h"
 
 
 #define TAKE_VARIABLES_SAMPLE_BIT					BIT1
-#define CONTINUOUSLY_ACQUIRING_PRESSURE_BIT			BIT2
-#define STOP_CONTINUOUSLY_ACQUIRING_PRESSURE_BIT	BIT3
+#define SEND_VARIABLES_SAMPLE_BIT					BIT2
+#define CONTINUOUSLY_ACQUIRING_PRESSURE_BIT			BIT3
+#define STOP_CONTINUOUSLY_ACQUIRING_PRESSURE_BIT	BIT4
 
 
 
 static const char * Tag_Acquisition = "Acquisition";
 
 bool LJ12A3_change_state_flag = false;
-static long long sample_interval = 0;
+static uint16_t sample_interval = 0;
+static uint16_t sample_quantity_total = 0;
+static uint16_t sample_counter = 0;
+static float MQ3_RL = 0.950, MQ3_R0 = 0.226;
+static float MQ135_RL = 19.73, MQ135_R0 = 2.508; 
+static VariablesData_t variables_data_sum = {.timestamp = 0, .temp = 0, .humidity = 0, .pressure = 0, 
+											.gas_co2 = 0, .gas_oh = 0, .gas_nit = 0};
+static VariablesData_t variables_data_last_measure = {.timestamp = 0, .temp = 0, .humidity = 0, .pressure = 0, 
+											.gas_co2 = 0, .gas_oh = 0, .gas_nit = 0};
 static func_callback_t variables_callback = NULL;
 static func_callback_t door_callback = NULL;
 static func_callback_t upper_pressure_threshold_callback = NULL; 
@@ -44,13 +58,20 @@ static TaskHandle_t xMainTaskLoopHandel = NULL;
 static void Acquisition_main_task();			// state machine. Responsible for notify (callbacks)
 
 static void Acquisition_main_variables_task(void*);	// Manages the time to sample and fill the variables structure
-//static void Acquisition_gases_variables_loop(void*);	// Manages only the gases variables (determine the gases and their "proportion")
 
 
 static void LJ12A3_change_state();				// Use only flags in this function
 static float Acquisition_get_pressure();
 static void Acquisition_continuously_acquiring_pressure();
 static void Acquisition_continuously_converting_pressure();
+static void Acquisition_send_variables_sample();
+static int32_t Acquisition_read_oversampling_ADS1219(uint8_t channel);
+static float Acquisition_get_humidity_percentage();
+static float Acquisition_get_MQSensor_Resistance(float Vref, float RL, float VRL);
+static float Acquisition_get_MQSensor_R0(float RS, float ratio);
+static float Acquisition_get_Ratio_MQsensor(float R0, float Rs);
+static uint32_t Acquisition_get_ppm_alcohol();
+static uint32_t Acquisition_get_ppm_CO2(uint32_t alcohol_ppm);
 
  /* Timer configuartion */
 static void IRAM_ATTR Callback_timer_sample(void* args);
@@ -83,6 +104,9 @@ esp_err_t Acquisition_init(VariablesData_t* _variables_data, doorState_t* _door_
 	variables_data = _variables_data;
 	door_data = _door_data;
 	
+	xTaskCreate(Acquisition_main_task, "Main loop", 3072, NULL, 5, &xMainTaskLoopHandel);
+	
+	
 	return ESP_OK;
 }
 
@@ -100,23 +124,26 @@ void Acquisition_set_pressure_thresholds_callbacks(func_callback_t _upper_pressu
 
 void Acquisition_start(long long sample_interval_in_seconds){
 	
-//	TickType_t start_time = xTaskGetTickCount();
 	sample_interval = sample_interval_in_seconds;
-	
-	xTaskCreate(Acquisition_main_task, "Main loop", 3072, NULL, 5, &xMainTaskLoopHandel);
-	
-	esp_timer_start_periodic(timer_sample, sample_interval*1000000);
-	
-	xTaskNotify(xMainTaskLoopHandel, 1, eIncrement);
+	sample_quantity_total = (uint16_t)(sample_interval/60);
+	esp_timer_start_periodic(timer_sample, 60*1000000ULL);
 	
 	ESP_LOGI(Tag_Acquisition, "Acquisition started!");
+	
+	atomic_fetch_or(&acquisition_task_flags, TAKE_VARIABLES_SAMPLE_BIT);
+	xTaskNotify(xMainTaskLoopHandel, 1, eIncrement);
+	
 	
 }
 
 
 void Acquisition_set_sample_interval(long long sample_interval_in_seconds){
 	sample_interval = sample_interval_in_seconds;
-	esp_timer_restart(timer_sample, sample_interval * 1000000ULL);
+	sample_quantity_total = (uint16_t) sample_interval/60;
+	if (sample_counter >= sample_quantity_total) {
+		atomic_fetch_or(&acquisition_task_flags, SEND_VARIABLES_SAMPLE_BIT);
+		xTaskNotify(xMainTaskLoopHandel, 1, eIncrement);
+	}
 }
 
 void Acquisition_set_pressure_thresholds(pressureThresholds_t thresholds){
@@ -124,7 +151,6 @@ void Acquisition_set_pressure_thresholds(pressureThresholds_t thresholds){
 }
 
 void Callback_timer_sample(void* args){
-//	get_sample = true;
 	atomic_fetch_or(&acquisition_task_flags, TAKE_VARIABLES_SAMPLE_BIT);
 	vTaskNotifyGiveFromISR(xMainTaskLoopHandel, NULL);
 }
@@ -141,6 +167,10 @@ void Acquisition_main_task(){
 			
 			if (bits_ask & TAKE_VARIABLES_SAMPLE_BIT) {
 				xTaskCreate(Acquisition_main_variables_task, "Variables loop", 3072, NULL, 8, NULL);
+			}
+			
+			if (bits_ask & SEND_VARIABLES_SAMPLE_BIT) {
+				Acquisition_send_variables_sample();
 			}
 			
 			if (bits_ask & CONTINUOUSLY_ACQUIRING_PRESSURE_BIT) {
@@ -171,60 +201,94 @@ void Acquisition_main_task(){
 
 
 static void Acquisition_main_variables_task(void* pvParameters){
-		
-	int32_t Humid_CH_ADS1219 = 0;
-	static int32_t MQ135_ADS1219 = 0, MQ3_ADS1219 = 0, MQ2_ADS1219 = 0; 
-	float Humidity = 0.0, weight = 0.0, pressure = 0.0, gas_CO2 = 0.0, gas_OH = 0.0, gas_Nx = 0.0;
-	time_t timestamp;
 	
-	MQ135_ADS1219 = ADS1219_read_channel_raw(0);
-	MQ3_ADS1219 = ADS1219_read_channel_raw(1);
-	MQ2_ADS1219 = ADS1219_read_channel_raw(2);
-	Humid_CH_ADS1219 = ADS1219_read_channel_raw(3);
+	float Humidity = 0.0, pressure = 0.0;
+	uint32_t gas_OH = 0, gas_CO2 = 0, gas_NOx = 0; 
+	float temperature = 0.0;
+
 	
 	// Here goes the conversion 
-	gas_CO2 = 0.0;
-	gas_OH = 0.0;
-	gas_Nx = 0.0;
+	gas_OH = Acquisition_get_ppm_alcohol();
+	gas_CO2 = Acquisition_get_ppm_CO2(gas_OH);
+	gas_NOx = 0;
 	
 	// Do the humidity conversion 
-	Humidity = (float)Humid_CH_ADS1219 * 0.0;
-	
-	while (atomic_load(&HX711_busy)) vTaskDelay(pdMS_TO_TICKS(1));
-	atomic_store(&HX711_busy, true);
-	weight = Acquisition_food_weight();
-//	uint64_t time_init = esp_timer_get_time();
+	Humidity = Acquisition_get_humidity_percentage();
+
 	pressure = Acquisition_get_pressure();
-//	uint64_t time_end = esp_timer_get_time();
-	atomic_store(&HX711_busy, false);
+
 	
-	variables_data->temp = DS18B20_get_Temperature_Value();
-	variables_data->gas_co2 = gas_CO2;
-	variables_data->gas_nit = gas_Nx;
-	variables_data->gas_oh = gas_OH;
-	variables_data->humidity = Humidity;
-	variables_data->weight = weight;
-	variables_data->pressure = pressure;
+	temperature = DS18B20_get_Temperature_Value();
+	
+	if (temperature > 125) {	// Avoid incorrect measurement  
+		if (variables_data_last_measure.temp != 0) {
+			temperature = variables_data_last_measure.temp; 
+		}
+		else {
+			while (temperature > 125) {
+				vTaskDelay(pdMS_TO_TICKS(3000));
+				temperature = DS18B20_get_Temperature_Value();
+			}
+		}
+	}
+	
+	variables_data_sum.temp += temperature;
+	variables_data_sum.gas_co2 += gas_CO2;
+	variables_data_sum.gas_nit += gas_NOx;
+	variables_data_sum.gas_oh += gas_OH;
+	variables_data_sum.humidity += Humidity;
+	variables_data_sum.pressure += pressure;
 	
 //	ESP_LOGI(Tag_Acquisition, "Pressure sensing time: %llu", (time_end - time_init));
+
+	sample_counter ++;
 	
-	time(&timestamp);
-	variables_data->timestamp = timestamp;
-	if (variables_callback != NULL){
-		variables_callback();
+	if (sample_counter == sample_quantity_total) {
+		atomic_fetch_or(&acquisition_task_flags, SEND_VARIABLES_SAMPLE_BIT);
+		xTaskNotify(xMainTaskLoopHandel, 1, eIncrement);
 	}
 	
-	if (pressure > pressure_threshold.max) {
-		if (upper_pressure_threshold_callback != NULL) upper_pressure_threshold_callback();
-	}
-	
-	if (pressure < pressure_threshold.min) {
-		if (lower_pressure_threshold_callback != NULL) lower_pressure_threshold_callback();
+	if (!Acquisition_door_state()) {
+		if (pressure > pressure_threshold.max) {
+			if (upper_pressure_threshold_callback != NULL) upper_pressure_threshold_callback();
+		}
+		
+		if (pressure < pressure_threshold.min) {
+			if (lower_pressure_threshold_callback != NULL) lower_pressure_threshold_callback();
+		}
 	}
 	
 	vTaskDelete(NULL);
 }
 
+void Acquisition_send_variables_sample() {
+	time_t timestamp;	
+	
+	time(&timestamp);
+	variables_data->timestamp = timestamp;
+	
+	variables_data->temp = variables_data_sum.temp / sample_counter;
+	variables_data->humidity = variables_data_sum.humidity / sample_counter;
+	variables_data->pressure = variables_data_sum.pressure / sample_counter;
+	variables_data->gas_co2 = variables_data_sum.gas_co2 / sample_counter;
+	variables_data->gas_oh = variables_data_sum.gas_oh / sample_counter;
+	variables_data->gas_nit = variables_data_sum.gas_nit / sample_counter;
+	
+	variables_data_last_measure = *variables_data;
+	
+	variables_data_sum.temp = 0.0;
+	variables_data_sum.humidity = 0.0;
+	variables_data_sum.pressure = 0.0;
+	variables_data_sum.gas_co2 = 0.0;
+	variables_data_sum.gas_oh = 0.0;
+	variables_data_sum.gas_nit = 0.0;
+	
+	sample_counter = 0;
+	
+	if (variables_callback != NULL){
+		variables_callback();
+	}
+}
 
 
 void LJ12A3_change_state(){
@@ -277,19 +341,20 @@ float Acquisition_food_weight(){
 	int32_t stack_raw_response = 0;
 	uint8_t iter = 0;
 	
-	for(iter = 0; iter < 16; iter++){
-		stack_raw_response += HX711_read_channel_raw('A',128);
+	while (atomic_load(&HX711_busy)) vTaskDelay(pdMS_TO_TICKS(1));
+	atomic_store(&HX711_busy, true);
+	for(iter = 0; iter < 32; iter++){
+		stack_raw_response += HX711_read_channel_raw('B',32);
 	}
+	atomic_store(&HX711_busy, false);
 	
-	stack_raw_response >>= 4;
+	stack_raw_response >>= 5;
 	
 	// Here goes the conversion but, at this moment only will set in 0.0 the result
 	
-	weight = (float)stack_raw_response * 0.0;
-	
-	weight *= 10;
-	
-	weight = (float)(((int)(weight))/10);	// To convert single-decimal precision  
+	weight = (85245.60081 * HX711_convert_To_Voltage(&stack_raw_response) - 212.940107);
+
+	if (weight <= 0) return 0.0;
 	
 	return weight;
 }
@@ -300,16 +365,22 @@ float Acquisition_get_pressure(){
 	int32_t stack_raw_response = 0;
 	uint8_t iter = 0;
 	
-	for(iter = 0; iter < 16; iter++){
-		stack_raw_response += HX711_read_channel_raw('B',32);
+	while (atomic_load(&HX711_busy)) vTaskDelay(pdMS_TO_TICKS(1));
+	atomic_store(&HX711_busy, true);
+	for(iter = 0; iter < 32; iter++){
+		stack_raw_response += HX711_read_channel_raw('A',64);
 	}
+	atomic_store(&HX711_busy, false);
 	
-	stack_raw_response >>= 4;
+	stack_raw_response >>= 5;
 	
 	// Here goes the conversion but, at this moment only will set in 0.0 the result
 	
-	pressure = (float)stack_raw_response * 0.0;
-	pressure = 78.5;
+	stack_raw_response = stack_raw_response * 0.013201062 + 1424.61603636;
+	
+	pressure = (float)stack_raw_response / 1000;
+
+	variables_data->pressure = pressure;
 	
 	return pressure;
 	
@@ -322,12 +393,14 @@ void Acquisition_check_pressure() {
 	
 	pressure = Acquisition_get_pressure();
 	
-	if (pressure > pressure_threshold.max) {
-		if (upper_pressure_threshold_callback != NULL) upper_pressure_threshold_callback();
-	}
-	
-	if (pressure < pressure_threshold.min) {
-		if (lower_pressure_threshold_callback != NULL) lower_pressure_threshold_callback();
+	if (!Acquisition_door_state()) {
+		if (pressure > pressure_threshold.max) {
+			if (upper_pressure_threshold_callback != NULL) upper_pressure_threshold_callback();
+		}
+		
+		if (pressure < pressure_threshold.min) {
+			if (lower_pressure_threshold_callback != NULL) lower_pressure_threshold_callback();
+		}
 	}
 }
 
@@ -356,14 +429,16 @@ void Acquisition_continuously_acquiring_pressure() {
 	while (atomic_load(&continuously_acquiring_pressure)) {
 		while (atomic_load(&HX711_busy)) vTaskDelay(pdMS_TO_TICKS(10));
 		atomic_store(&HX711_busy, true);
-		stack_raw_response += HX711_read_channel_raw('B',32);
+		stack_raw_response += HX711_read_channel_raw('A',64);
 		atomic_store(&HX711_busy, false);
 		iter ++;
-		if (iter == 8) {
+		if (iter == 32) {
 			iter = 0;
-			stack_raw_response >>= 3;
+			stack_raw_response >>= 5;
 			atomic_store(&stack_raw_pressure, stack_raw_response);
-//			xTaskNotify(xConvertingPressureTaskHandle, 1, eIncrement);
+			stack_raw_response = 0;
+			
+			vTaskDelay(pdMS_TO_TICKS(1000));
 		}
 	}
 	vTaskDelete(NULL);
@@ -376,15 +451,11 @@ void Acquisition_continuously_converting_pressure() {
 	uint32_t response = 0;
 	 
 	while (atomic_load(&continuously_acquiring_pressure)) {
-//		count = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 		if (atomic_load(&stack_raw_pressure) != 0) {
 			response = atomic_exchange(&stack_raw_pressure, 0);
-			// Here goes the conversion but, at this moment only will set in 0.0 the result
-			pressure = (float)response * 0.0; 
-			pressure = 78.5; 
-//			if (pressure > pressure_threshold.max) {
-//				if (upper_pressure_threshold_callback != NULL) upper_pressure_threshold_callback();
-//			}
+			pressure = (float)(response * 0.013201062 + 1424.61603636) / 1000;
+			
+			variables_data->pressure = pressure;
 			
 			if (pressure < pressure_threshold.min) {
 				if (lower_pressure_threshold_callback != NULL) lower_pressure_threshold_callback();
@@ -395,6 +466,93 @@ void Acquisition_continuously_converting_pressure() {
 	}
 	vTaskDelete(NULL);
 }
+
+
+int32_t Acquisition_read_oversampling_ADS1219(uint8_t channel) {
+	uint8_t samp_count = 0;
+	int32_t channel_sampling_stacking = 0;
+	
+	for (samp_count = 0; samp_count < 32; samp_count ++) {
+		channel_sampling_stacking += ADS1219_read_channel_raw(channel);
+	}
+	
+	channel_sampling_stacking = channel_sampling_stacking >> 5;
+	
+	return channel_sampling_stacking; 
+}
+
+static float Acquisition_get_humidity_percentage() {
+	float Humidity = 0;
+	
+	Humidity = -0.000031719305965 * Acquisition_read_oversampling_ADS1219(3) + 177.3752344;
+	
+	if (Humidity < 0) {
+		Humidity = 0;
+	}
+	
+	return Humidity;
+}
+
+
+float Acquisition_get_MQSensor_Resistance(float Vref, float RL, float VRL)
+{
+	return ((Vref / VRL) * RL) - RL;
+}
+
+
+float Acquisition_get_MQSensor_R0(float RS, float ratio)
+{
+	return RS / ratio;
+}
+
+
+float Acquisition_get_Ratio_MQsensor(float R0, float Rs)
+{
+	return Rs/R0;
+}
+
+
+uint32_t Acquisition_get_ppm_alcohol() {
+	float MQ3_volt = 0, MQ3_Rs = 0;
+	double ratio = 0;
+	int32_t alcohol_ppm = 0;
+	
+	MQ3_volt = Acquisition_read_oversampling_ADS1219(1) * 3.3 / 8388607;
+	MQ3_Rs = Acquisition_get_MQSensor_Resistance(3.3, MQ3_RL, MQ3_volt);
+	ratio = Acquisition_get_Ratio_MQsensor(MQ3_R0, MQ3_Rs);		// before the first time, is necessary to measurement the R0 of MQ3 
+	
+	alcohol_ppm = (-555046.00269 * log(ratio) + 984326.2093);
+	
+	if (alcohol_ppm < 0) return 0;
+	
+	return alcohol_ppm;
+}
+
+
+
+uint32_t Acquisition_get_ppm_CO2(uint32_t alcohol_ppm) {
+	float MQ135_volt = 0, MQ135_Rs = 0;
+	double alcohol_ratio = 0, ratio = 0;
+	int32_t CO2_ppm = 0;
+	
+	alcohol_ratio = 3.64 - (3.5013975 * exp(alcohol_ppm * -1.2470394 * pow(10,-5)));
+	
+	MQ135_volt = Acquisition_read_oversampling_ADS1219(0) * 3.3 / 8388607;
+	MQ135_Rs = Acquisition_get_MQSensor_Resistance(3.3, MQ135_RL, MQ135_volt);
+	ratio = Acquisition_get_Ratio_MQsensor(MQ135_R0, MQ135_Rs);		// before the first time, is necessary to measurement the R0 of MQ3
+	
+	
+	if (alcohol_ratio > 0) {
+		ratio = ratio - alcohol_ratio;
+	} 
+	
+	CO2_ppm = (1.9234367 * pow(10, 27)* pow(ratio , -43.7088057));
+	
+	if (CO2_ppm < 0) return 0;
+	
+	return CO2_ppm;
+}
+
 
 
 

@@ -16,7 +16,6 @@
 static const char *TAG_MOTORPUMP = "MOTORPUMP";
 
 
-//static const float vcc_pwm_circuit = 12.0;
 static const int pwm_frequency = MOTOBOMBAN_TIMEBASE_PERIOD; 
 static const int pwm_clk_frecquency = MOTOBOMBAN_TIMEBASE_RESOLUTION_HZ;
 static const int pwm_steps = pwm_clk_frecquency / pwm_frequency;
@@ -24,8 +23,7 @@ static const int pwm_one_percent_value = pwm_steps / 100;
 static int current_pwm_value = 0;
 
 static motorpumpState_t* motorpump_data = NULL;
-static func_callback_t motorpump_event_callback = NULL;
-//static func_callback_t turn_off_callback = NULL; 
+static func_callback_t motorpump_event_callback = NULL; 
 
 
 #define TURN_ON_MOTORPUMP_BIT		BIT1
@@ -156,10 +154,6 @@ void Motorpump_turn_on_handle() {
 		return;
 	}
 	
-	if (!timer_mcpwm_enable) {
-		mcpwm_timer_enable(mcpwm_timer);
-	}
-	
 	time_t tiemstamp;
 	time(&tiemstamp);
 	motorpump_data->timestamp = (long long)tiemstamp;
@@ -185,10 +179,6 @@ void Motorpump_turn_off_handle() {
 		current_pwm_value --;
 		Motorpump_set_pwm_value(current_pwm_value);
 		vTaskDelay(pdMS_TO_TICKS(10));
-	}
-		
-	if (timer_mcpwm_enable) {
-		mcpwm_timer_disable(mcpwm_timer);
 	}
 	
 	time_t tiemstamp;

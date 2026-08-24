@@ -29,10 +29,6 @@
 
 
 
-//struct SensorData {
-//    uint32_t timestamp;
-//    float valores[7];
-//};
 
 
 void FileM_init();
@@ -67,8 +63,6 @@ void FileM_close_motorpump_data_file();
 void FileM_remove_motorpump_file();
 void FileM_list_files(const char* base_path);
 
-
-//void FileM_main_function(void);
 
 
 
