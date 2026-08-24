@@ -106,8 +106,6 @@ class VariablesData {
   );
 }
 
-// enum EventType { door, motorpump, weight }
-
 class DoorData {
   final DateTime time;
   final bool isOpen; // true = opened, false = closed

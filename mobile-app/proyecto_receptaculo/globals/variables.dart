@@ -6,7 +6,6 @@ ValueNotifier<bool> userLogged = ValueNotifier<bool>(false);
 ValueNotifier<bool> isStatisticsLoading = ValueNotifier<bool>(false);
 ValueNotifier<bool> isAlarmasLoading = ValueNotifier<bool>(false);
 ValueNotifier<bool> isControlsLoading = ValueNotifier<bool>(false);
-// bool updateGraphs = true;
 
 VariablesAlarmThresholds variablesAlarmThresholds = VariablesAlarmThresholds(
   temperature: TemperatureThresholds(min: 5.0, max: 25.0),
@@ -54,7 +53,6 @@ DateTime monitorLastSeen = DateTime.now().subtract(const Duration(days: 365));
 ValueNotifier<bool> updateMonitorPresenceWidget = ValueNotifier<bool>(false);
 
 String selectedInterval = '5 min';
-// String currentInterval = '5 min';
 
 List<WiFiCredentials> wifiCredentialsList = List.filled(
   5,
