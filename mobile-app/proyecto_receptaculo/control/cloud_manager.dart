@@ -578,7 +578,6 @@ class CloudManager {
           data['O'].toDouble(),
           data['N'].toDouble(),
         );
-        // variablesDataList.add(variablesData);
         variablesDataList.add(variablesData);
         variablesDataListIndex++;
         if (variablesDataListIndex >= variablesDataListDesiredLength) {
@@ -744,7 +743,6 @@ class CloudManager {
       debugPrint("WiFi Networks Edited: ${event.snapshot.value}");
       if (event.snapshot.value == true) {
         debugPrint("Descargando nuevas credenciales WiFi...");
-        // await database.getWiFiNets();
         await getWiFiNets();
         await database.changeWifiNetsEdits('ESP', false);
         debugPrint("Nuevas credenciales WiFi descargadas.");
