@@ -7,12 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'package:proyecto_receptaculo/globals/definitions.dart';
 import 'package:proyecto_receptaculo/globals/variables.dart';
 
-class HelloWorld {
-  String greet() {
-    return 'Hello, World!';
-  }
-}
-
 class CloudManager {
   // Aquí irían los métodos y propiedades para gestionar la nube.
 
@@ -178,13 +172,28 @@ class CloudManager {
     );
     endDay += frontToBack ? -1 : 1; // To include the end date
     while (doorDataListIndex < doorDataListDesiredLength) {
-      if (startYear == endYear &&
-          startMonth == endMonth &&
-          startDay == endDay) {
-        debugPrint("No more data available. Stopping.");
-        break;
+      if (frontToBack) {
+        if (DateTime(
+          startYear,
+          startMonth,
+          startDay,
+        ).isBefore(DateTime(endYear, endMonth, endDay))) {
+          debugPrint("No more data available. Stopping.");
+          break;
+        }
+      } else {
+        if (DateTime(
+          startYear,
+          startMonth,
+          startDay,
+        ).isAfter(DateTime(endYear, endMonth, endDay))) {
+          debugPrint("No more data available. Stopping.");
+          break;
+        }
       }
+
       String node = "$startYear/$startMonth/$startDay";
+      debugPrint("Fetching door events for node: Door/$node");
       doorEventsSnapshot = await database.getDoorEvents(node);
       debugPrint(
         "Door Events Snapshot length: ${doorEventsSnapshot.children.length}",
@@ -278,12 +287,26 @@ class CloudManager {
     );
     endDay += frontToBack ? -1 : 1; // To include the end date
     while (motorpumpDataListIndex < motorpumpDataListDesiredLength) {
-      if (startYear == endYear &&
-          startMonth == endMonth &&
-          startDay == endDay) {
-        debugPrint("No more data available. Stopping.");
-        break;
+      if (frontToBack) {
+        if (DateTime(
+          startYear,
+          startMonth,
+          startDay,
+        ).isBefore(DateTime(endYear, endMonth, endDay))) {
+          debugPrint("No more data available. Stopping.");
+          break;
+        }
+      } else {
+        if (DateTime(
+          startYear,
+          startMonth,
+          startDay,
+        ).isAfter(DateTime(endYear, endMonth, endDay))) {
+          debugPrint("No more data available. Stopping.");
+          break;
+        }
       }
+
       String node = "$startYear/$startMonth/$startDay";
       motorpumpEventsSnapshot = await database.getMotorpumpEvents(node);
       debugPrint(
@@ -381,11 +404,24 @@ class CloudManager {
     );
     endDay += frontToBack ? -1 : 1; // To include the end date
     while (weightDataListIndex < weightDataListDesiredLength) {
-      if (startYear == endYear &&
-          startMonth == endMonth &&
-          startDay == endDay) {
-        debugPrint("No more data available. Stopping.");
-        break;
+      if (frontToBack) {
+        if (DateTime(
+          startYear,
+          startMonth,
+          startDay,
+        ).isBefore(DateTime(endYear, endMonth, endDay))) {
+          debugPrint("No more data available. Stopping.");
+          break;
+        }
+      } else {
+        if (DateTime(
+          startYear,
+          startMonth,
+          startDay,
+        ).isAfter(DateTime(endYear, endMonth, endDay))) {
+          debugPrint("No more data available. Stopping.");
+          break;
+        }
       }
       String node = "$startYear/$startMonth/$startDay";
       weightEventsSnapshot = await database.getWeightEvents(node);
@@ -481,13 +517,27 @@ class CloudManager {
     );
     endDay += frontToBack ? -1 : 1; // To include the end date
     while (variablesDataListIndex < variablesDataListDesiredLength) {
-      if (startYear == endYear &&
-          startMonth == endMonth &&
-          startDay == endDay) {
-        debugPrint("No more data available. Stopping.");
-        break;
+      if (frontToBack) {
+        if (DateTime(
+          startYear,
+          startMonth,
+          startDay,
+        ).isBefore(DateTime(endYear, endMonth, endDay))) {
+          debugPrint("No more data available. Stopping.");
+          break;
+        }
+      } else {
+        if (DateTime(
+          startYear,
+          startMonth,
+          startDay,
+        ).isAfter(DateTime(endYear, endMonth, endDay))) {
+          debugPrint("No more data available. Stopping.");
+          break;
+        }
       }
       String node = "$startYear/$startMonth/$startDay";
+      debugPrint("Fetching variables data for node: $node");
       dataLogSnapshot = await database.getDataLog(node);
       debugPrint(
         "Data Log Snapshot length: ${dataLogSnapshot.children.length}",
@@ -707,11 +757,11 @@ class CloudManager {
     isAlarmasLoading.value = true;
     isControlsLoading.value = true;
 
+    await getFirstDateOfData();
+
     await getAlarmThresholds();
 
     await getCurrentSettings();
-
-    await getFirstDateOfData();
 
     await getVariablesData(DateTime.now(), firstDataTime);
 
