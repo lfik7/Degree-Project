@@ -33,9 +33,9 @@ class FileManager {
         TextCellValue('Temperature'),
         TextCellValue('Humidity'),
         TextCellValue('Pressure'),
-        TextCellValue('CO2'),
+        // TextCellValue('CO2'),
         TextCellValue('Alcohol'),
-        TextCellValue('Nitrogen'),
+        // TextCellValue('Nitrogen'),
       ];
       variablesSheet.appendRow(variablesHeaders);
       List<CellValue> doorHeaders = [
@@ -72,9 +72,9 @@ class FileManager {
             DoubleCellValue(data.temperature),
             DoubleCellValue(data.humidity),
             DoubleCellValue(data.pressure),
-            DoubleCellValue(data.carbondioxide),
+            // DoubleCellValue(data.carbondioxide),
             DoubleCellValue(data.alcohol),
-            DoubleCellValue(data.nitrogen),
+            // DoubleCellValue(data.nitrogen),
           ];
           variablesSheet.appendRow(row);
         }
