@@ -5,10 +5,6 @@ import 'package:proyecto_receptaculo/globals/functions.dart';
 import 'package:proyecto_receptaculo/control/cloud_manager.dart';
 
 // Página de alarmas
-// Este archivo define una pantalla donde se muestran varias "alarmas"
-// (por ejemplo temperatura, humedad, presión, etc.). Cada tarjeta muestra
-// el valor actual y el rango aceptable (umbral). Al tocar la tarjeta se
-// abre un diálogo para editar el umbral mínimo y máximo.
 
 class AlarmsPage extends StatefulWidget {
   const AlarmsPage({super.key});
@@ -31,10 +27,10 @@ class _AlarmsPageState extends State<AlarmsPage>
 
   final Map<VariablesType, RangeValues> _thresholdsLimits = {
     VariablesType.temperature: const RangeValues(5.0, 35.0),
-    VariablesType.humidity: const RangeValues(20.0, 80.0),
-    VariablesType.pressure: const RangeValues(10.0, 110.0),
+    VariablesType.humidity: const RangeValues(20.0, 90.0),
+    VariablesType.pressure: const RangeValues(10.0, 115.0),
     VariablesType.co2: const RangeValues(0.0, 5000.0),
-    VariablesType.alcohol: const RangeValues(0.0, 5000.0),
+    VariablesType.alcohol: const RangeValues(0.0, 500000.0),
     VariablesType.nitrogen: const RangeValues(0.0, 5000.0),
   };
 
@@ -85,7 +81,6 @@ class _AlarmsPageState extends State<AlarmsPage>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 6),
-            // const Text('Time select for sending data to server'),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -117,7 +112,7 @@ class _AlarmsPageState extends State<AlarmsPage>
                 ),
                 const SizedBox(width: 8),
                 // Botón de ejemplo que muestra un SnackBar
-                ElevatedButton(
+                FilledButton(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -221,7 +216,6 @@ class _AlarmsPageState extends State<AlarmsPage>
   }
 
   Widget _alarmCard(VariablesType variable, IconData icon) {
-    // final rv = _thresholds[variable];
     return ValueListenableBuilder(
       valueListenable: updateAlarmWidgets,
       builder: (context, value, child) {
@@ -230,8 +224,6 @@ class _AlarmsPageState extends State<AlarmsPage>
             'Threshold: ${rv.start.toStringAsFixed(2)}  —  ${rv.end.toStringAsFixed(2)}';
 
         final name = _getVariableName(variable);
-        // variable.name[0].toUpperCase() +
-        // variable.name.substring(1).replaceAll('_', ' ');
 
         double currentValues = _getCurrentValues(variable);
         return Card(
@@ -307,8 +299,6 @@ class _AlarmsPageState extends State<AlarmsPage>
     );
 
     final name = _getVariableName(variable);
-    // variable.name[0].toUpperCase() +
-    // variable.name.substring(1).replaceAll('_', ' ');
 
     // showDialog devuelve RangeValues cuando se pulsa "Guardar"
     final result = await showDialog<RangeValues>(
@@ -451,11 +441,11 @@ class _AlarmsPageState extends State<AlarmsPage>
             ),
           ),
           actions: [
-            TextButton(
+            ElevatedButton(
               onPressed: () => Navigator.of(dialogContext).pop(null),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: () {
                 final parsedMin = double.tryParse(
                   minController.text.replaceAll(',', '.'),
@@ -515,10 +505,9 @@ class _AlarmsPageState extends State<AlarmsPage>
           _alarmCard(VariablesType.temperature, Icons.thermostat_rounded),
           _alarmCard(VariablesType.humidity, Icons.water_drop_rounded),
           _alarmCard(VariablesType.pressure, Icons.speed_rounded),
-          _alarmCard(VariablesType.co2, Icons.cloud_rounded),
+          // _alarmCard(VariablesType.co2, Icons.cloud_rounded),
           _alarmCard(VariablesType.alcohol, Icons.cloud),
-          _alarmCard(VariablesType.nitrogen, Icons.cloud),
-          // _alarmCard('Weight', Icons.fitness_center_rounded),
+          // _alarmCard(VariablesType.nitrogen, Icons.cloud),
         ],
       ),
     );

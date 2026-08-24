@@ -8,9 +8,6 @@ import 'package:proyecto_receptaculo/globals/own_widgets.dart';
 import 'package:proyecto_receptaculo/control/cloud_manager.dart';
 
 // Página de estadísticas y gráficas
-// Contiene 1) un widget de estado de puerta (cerrada/abierta), 2) historial
-// de eventos de la puerta y 3) una serie de tarjetas con gráficos de línea
-// (Syncfusion) que se pueden desplazar horizontalmente.
 
 class StadisticsPage extends StatefulWidget {
   const StadisticsPage({super.key});
@@ -125,32 +122,6 @@ class _StadisticsPageState extends State<StadisticsPage>
       builder: (context, value, child) {
         if (doorDataList.isEmpty) {
           closedDoor = false;
-          // return Card(
-          //   color: const Color.fromARGB(255, 128, 128, 128),
-          //   child: ListTile(
-          //     leading: const Icon(
-          //       Icons.door_front_door,
-          //       color: Colors.white,
-          //     ),
-          //     title: const Text(
-          //       'Door Status',
-          //       style: TextStyle(color: Colors.white),
-          //     ),
-          //     subtitle: const Text(
-          //       'No data',
-          //       style: TextStyle(color: Colors.white),
-          //     ),
-          //     onTap: () {
-          //       // Al tocar mostramos el historial en un diálogo
-          //       showDialog(
-          //         context: context,
-          //         builder: (BuildContext context) {
-          //           return _doorHistory();
-          //         },
-          //       );
-          //     },
-          //   ),
-          // );
         } else {
           closedDoor = doorDataList[0].isOpen ? false : true;
         }
@@ -298,10 +269,10 @@ class _StadisticsPageState extends State<StadisticsPage>
                 return ListTile(
                   leading: Icon(
                     e.weight > 1 ? Icons.check : Icons.close,
-                    color: e.weight > 1 ? Colors.green : Colors.orange,
+                    color: e.weight > 500 ? Colors.green : Colors.orange,
                   ),
                   title: Text(
-                    '${e.weight}',
+                    '${e.weight} g',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(_formatTime(e.time)),
@@ -339,7 +310,7 @@ class _StadisticsPageState extends State<StadisticsPage>
           weightFood = weightDataList[0].weight;
         }
         return Card(
-          color: weightFood > 1
+          color: weightFood > 500
               ? const Color.fromARGB(255, 52, 104, 53)
               : const Color.fromARGB(255, 139, 58, 58),
           child: ListTile(
@@ -352,7 +323,7 @@ class _StadisticsPageState extends State<StadisticsPage>
               style: const TextStyle(color: Colors.white),
             ),
             subtitle: Text(
-              '$weightFood',
+              '$weightFood g',
               style: const TextStyle(color: Colors.white),
             ),
             onTap: () {
@@ -377,7 +348,6 @@ class _StadisticsPageState extends State<StadisticsPage>
             .map((e) => _ChartPoint(e.time, e.temperature))
             .toList();
         return data;
-      // break;
       case VariablesType.humidity:
         List<_ChartPoint> data = variablesDataList
             .map((e) => _ChartPoint(e.time, e.humidity))
@@ -406,6 +376,86 @@ class _StadisticsPageState extends State<StadisticsPage>
     }
   }
 
+  List<_ChartPoint> _buildThresholdMaxLines(VariablesType variable) {
+    switch (variable) {
+      case VariablesType.temperature:
+        return variablesDataList
+            .map(
+              (e) =>
+                  _ChartPoint(e.time, variablesAlarmThresholds.temperature.max),
+            )
+            .toList();
+      case VariablesType.humidity:
+        return variablesDataList
+            .map(
+              (e) => _ChartPoint(e.time, variablesAlarmThresholds.humidity.max),
+            )
+            .toList();
+      case VariablesType.pressure:
+        return variablesDataList
+            .map(
+              (e) => _ChartPoint(e.time, variablesAlarmThresholds.pressure.max),
+            )
+            .toList();
+      case VariablesType.co2:
+        return variablesDataList
+            .map((e) => _ChartPoint(e.time, variablesAlarmThresholds.co2.max))
+            .toList();
+      case VariablesType.alcohol:
+        return variablesDataList
+            .map(
+              (e) => _ChartPoint(e.time, variablesAlarmThresholds.alcohol.max),
+            )
+            .toList();
+      case VariablesType.nitrogen:
+        return variablesDataList
+            .map(
+              (e) => _ChartPoint(e.time, variablesAlarmThresholds.nitrogen.max),
+            )
+            .toList();
+    }
+  }
+
+  List<_ChartPoint> _buildThresholdMinLines(VariablesType variable) {
+    switch (variable) {
+      case VariablesType.temperature:
+        return variablesDataList
+            .map(
+              (e) =>
+                  _ChartPoint(e.time, variablesAlarmThresholds.temperature.min),
+            )
+            .toList();
+      case VariablesType.humidity:
+        return variablesDataList
+            .map(
+              (e) => _ChartPoint(e.time, variablesAlarmThresholds.humidity.min),
+            )
+            .toList();
+      case VariablesType.pressure:
+        return variablesDataList
+            .map(
+              (e) => _ChartPoint(e.time, variablesAlarmThresholds.pressure.min),
+            )
+            .toList();
+      case VariablesType.co2:
+        return variablesDataList
+            .map((e) => _ChartPoint(e.time, variablesAlarmThresholds.co2.min))
+            .toList();
+      case VariablesType.alcohol:
+        return variablesDataList
+            .map(
+              (e) => _ChartPoint(e.time, variablesAlarmThresholds.alcohol.min),
+            )
+            .toList();
+      case VariablesType.nitrogen:
+        return variablesDataList
+            .map(
+              (e) => _ChartPoint(e.time, variablesAlarmThresholds.nitrogen.min),
+            )
+            .toList();
+    }
+  }
+
   // Construye una tarjeta con un gráfico de línea.
   // El gráfico se coloca dentro de un SingleChildScrollView horizontal
   // para permitir desplazamiento si la anchura total excede el espacio.
@@ -415,6 +465,8 @@ class _StadisticsPageState extends State<StadisticsPage>
       builder: (context, value, child) {
         String title = '';
         var data = _buildSampleData(variable);
+        var thresholdMax = _buildThresholdMaxLines(variable);
+        var thresholdMin = _buildThresholdMinLines(variable);
         if (data.isEmpty) {
           data = [_ChartPoint(DateTime.now(), 0)];
         }
@@ -444,22 +496,47 @@ class _StadisticsPageState extends State<StadisticsPage>
         final chartWidth = (data.length * 28).clamp(600, 1400).toDouble();
 
         return Card(
-          color:
-              (currentValue < alarmThresholds.start ||
-                  currentValue > alarmThresholds.end)
-              ? const Color.fromARGB(255, 153, 26, 17).withValues(alpha: 0.4)
-              : null,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+            side: BorderSide(
+              color:
+                  (currentValue < alarmThresholds.start ||
+                      currentValue > alarmThresholds.end)
+                  ? const Color.fromARGB(255, 153, 26, 17)
+                  : Colors.transparent,
+              width: 3.0,
+            ),
+          ),
           child: ListTile(
             title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, color: Colors.black),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Icon(
+                      icon,
+                      color:
+                          (currentValue < alarmThresholds.start ||
+                              currentValue > alarmThresholds.end)
+                          ? const Color.fromARGB(255, 153, 26, 17)
+                          : Colors.black,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Icon(
+                  (currentValue < alarmThresholds.start ||
+                          currentValue > alarmThresholds.end)
+                      ? Icons.warning_amber_rounded
+                      : null,
+                  color: const Color.fromARGB(255, 153, 26, 17),
                 ),
               ],
             ),
@@ -490,6 +567,22 @@ class _StadisticsPageState extends State<StadisticsPage>
                       ),
                     ),
                     series: <LineSeries<_ChartPoint, DateTime>>[
+                      LineSeries<_ChartPoint, DateTime>(
+                        dataSource: thresholdMax,
+                        xValueMapper: (_ChartPoint p, _) => p.x,
+                        yValueMapper: (_ChartPoint p, _) => p.y,
+                        color: Colors.grey[500],
+                        markerSettings: const MarkerSettings(isVisible: false),
+                        width: 1,
+                      ),
+                      LineSeries<_ChartPoint, DateTime>(
+                        dataSource: thresholdMin,
+                        xValueMapper: (_ChartPoint p, _) => p.x,
+                        yValueMapper: (_ChartPoint p, _) => p.y,
+                        color: Colors.grey[500],
+                        markerSettings: const MarkerSettings(isVisible: false),
+                        width: 1,
+                      ),
                       LineSeries<_ChartPoint, DateTime>(
                         // dataSource es la lista de puntos
                         dataSource: data,
@@ -598,7 +691,7 @@ class _StadisticsPageState extends State<StadisticsPage>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                "Charts Section",
+                "Stadistics",
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const SizedBox(width: 10),
@@ -643,9 +736,9 @@ class _StadisticsPageState extends State<StadisticsPage>
           _graph(VariablesType.temperature, Icons.thermostat_rounded),
           _graph(VariablesType.humidity, Icons.water_drop),
           _graph(VariablesType.pressure, Icons.speed),
-          _graph(VariablesType.co2, Icons.cloud),
+          // _graph(VariablesType.co2, Icons.cloud),
           _graph(VariablesType.alcohol, Icons.cloud),
-          _graph(VariablesType.nitrogen, Icons.cloud),
+          // _graph(VariablesType.nitrogen, Icons.cloud),
         ],
       ),
     );

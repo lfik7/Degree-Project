@@ -8,8 +8,6 @@ import 'package:proyecto_receptaculo/core/file_manager.dart';
 import 'package:proyecto_receptaculo/core/wifi_manager.dart';
 
 // Página de controles
-// Archivo sencillo que muestra cómo construir una página con botones
-// y layout básico. Se puede ampliar para enviar comandos al dispositivo.
 class ControlPage extends StatefulWidget {
   const ControlPage({super.key});
 
@@ -27,7 +25,6 @@ class _ControlPageState extends State<ControlPage>
   final WiFiManager wifiManager = WiFiManager();
   late DateTimeRange selectedDateRangeDownload;
   late DateTimeRange selectedDateRangeClear;
-  // ValueNotifier<bool> isLoadingLocal = ValueNotifier<bool>(false);
   bool directMonitorCommunication = false;
 
   @override
@@ -145,7 +142,7 @@ class _ControlPageState extends State<ControlPage>
               ),
               ListTile(
                 title: const Text('Weight'),
-                subtitle: Text('${currentSettings.weight} kg'),
+                subtitle: Text('${currentSettings.weight} g'),
               ),
               ListTile(
                 title: const Text('Pressure Min Threshold'),
@@ -253,7 +250,7 @@ class _ControlPageState extends State<ControlPage>
                     onChanged: (value) {
                       setState(() {
                         directMonitorCommunication = value;
-                        monitorWifiConnection();
+                        _monitorWifiConnection();
                       });
                     },
                   ),
@@ -265,7 +262,7 @@ class _ControlPageState extends State<ControlPage>
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
+                  ElevatedButton(
                     onPressed: () async {
                       for (
                         int iter = 0;
@@ -281,9 +278,9 @@ class _ControlPageState extends State<ControlPage>
                     child: const Text('cancel'),
                   ),
                   const SizedBox(width: 20),
-                  ElevatedButton(
+                  FilledButton(
                     onPressed: () {
-                      sendWifiNets();
+                      _sendWifiNets();
                     },
                     child: const Text('change'),
                   ),
@@ -369,9 +366,8 @@ class _ControlPageState extends State<ControlPage>
                       icon: const Icon(Icons.download),
                       onPressed: () {
                         // Call AlertDialog to ask for confirmation
-                        showDownloadDialog();
+                        _showDownloadDialog();
                       },
-                      // child: const Text('Download'),
                     ),
                   ],
                 ),
@@ -397,9 +393,8 @@ class _ControlPageState extends State<ControlPage>
                       icon: const Icon(Icons.delete_forever),
                       onPressed: () {
                         // Call AlertDialog to ask for confirmation
-                        showClearDialog();
+                        _showClearDialog();
                       },
-                      // child: const Text('Download'),
                     ),
                   ],
                 ),
@@ -411,7 +406,7 @@ class _ControlPageState extends State<ControlPage>
     );
   }
 
-  void showDownloadDialog() {
+  void _showDownloadDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -421,13 +416,13 @@ class _ControlPageState extends State<ControlPage>
             'Are you sure you want to download data from ${selectedDateRangeDownload.start.toLocal().toString().split(' ').first} to ${selectedDateRangeDownload.end.toLocal().toString().split(' ').first}?',
           ),
           actions: [
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Cierra el diálogo
               },
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: () async {
                 await cloudManager.pauseStreamSubscriptions();
                 debugPrint('Downloading data from database...');
@@ -470,7 +465,7 @@ class _ControlPageState extends State<ControlPage>
     );
   }
 
-  void showClearDialog() {
+  void _showClearDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -480,13 +475,13 @@ class _ControlPageState extends State<ControlPage>
             'Are you sure you want to clear data from ${selectedDateRangeClear.start.toLocal().toString().split(' ').first} to ${selectedDateRangeClear.end.toLocal().toString().split(' ').first}?',
           ),
           actions: [
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Cierra el diálogo
               },
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: () async {
                 Navigator.of(context).pop(); // Cierra el diálogo
                 debugPrint('Clearing data from database...');
@@ -514,7 +509,7 @@ class _ControlPageState extends State<ControlPage>
     );
   }
 
-  Future<void> monitorWifiConnection() async {
+  Future<void> _monitorWifiConnection() async {
     isControlsLoading.value = true;
     if (directMonitorCommunication) {
       await wifiManager.connectToMonitorWifi();
@@ -554,7 +549,7 @@ class _ControlPageState extends State<ControlPage>
     }
   }
 
-  Future<void> sendWifiNets() async {
+  Future<void> _sendWifiNets() async {
     isControlsLoading.value = true;
     for (int iter = 0; iter < wifiCredentialsList.length; iter++) {
       wifiCredentialsList[iter] = WiFiCredentials(
@@ -577,7 +572,6 @@ class _ControlPageState extends State<ControlPage>
     } else {
       await cloudManager.changeWiFiNets();
     }
-    // await cloudManager.changeWiFiNets();
     isWifiCredentialsListUpdating.value = !isWifiCredentialsListUpdating.value;
     isControlsLoading.value = false;
     if (directMonitorCommunication && !connectedToMonitorNetwork) {
@@ -588,8 +582,8 @@ class _ControlPageState extends State<ControlPage>
     );
   }
 
-  Widget logoutButton() {
-    return ElevatedButton.icon(
+  Widget _logoutButton() {
+    return FilledButton.icon(
       onPressed: () async {
         // here goes an alert dialog to confirm logout
         showDialog(
@@ -599,13 +593,13 @@ class _ControlPageState extends State<ControlPage>
               title: const Text('Confirm Logout'),
               content: const Text('Are you sure you want to logout?'),
               actions: [
-                TextButton(
+                ElevatedButton(
                   onPressed: () {
                     Navigator.of(context).pop(); // Cierra el diálogo
                   },
                   child: const Text('Cancel'),
                 ),
-                ElevatedButton(
+                FilledButton(
                   onPressed: () async {
                     Navigator.of(context).pop(); // Cierra el diálogo
                     isControlsLoading.value = true;
@@ -623,6 +617,10 @@ class _ControlPageState extends State<ControlPage>
       },
       icon: const Icon(Icons.logout),
       label: const Text('Logout'),
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color.fromARGB(255, 186, 23, 11),
+        foregroundColor: Colors.white,
+      ),
     );
   }
 
@@ -643,7 +641,7 @@ class _ControlPageState extends State<ControlPage>
           _databaseManagerExpansibleCard(),
           // Add a logout button at the end
           const SizedBox(height: 20),
-          logoutButton(),
+          _logoutButton(),
         ],
       ),
     );
