@@ -1,8 +1,5 @@
 import 'dart:io';
-// import 'dart:convert'; // Para convertir Strings a Bytes
 import 'package:flutter/foundation.dart';
-// import 'package:app_settings/app_settings.dart';
-// import 'package:proyecto_receptaculo/globals/definitions.dart';
 import 'package:proyecto_receptaculo/globals/variables.dart';
 
 class WiFiManager {
@@ -42,19 +39,6 @@ class WiFiManager {
         await Future.delayed(
           const Duration(milliseconds: 500),
         ); // Pequeña pausa entre envíos
-        // var monitorResponse;
-        // String responseDecoder;
-        // socket.listen(
-        //   (monitorResponse) {
-        //     responseDecoder = utf8.decode(monitorResponse);
-        //     debugPrint('Respuesta del servidor: $responseDecoder');
-        //   },
-        //   onError: (error) => debugPrint('Error en el stream: $error'),
-        //   onDone: () => debugPrint('Servidor cerró la conexión.'),
-        // );
-        // if (responseDecoder != "Ok") {
-        //   debugPrint('Error al enviar datos WiFi: $responseDecoder');
-        // }
         wifiPos++;
       }
 

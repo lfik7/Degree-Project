@@ -6,11 +6,11 @@ class AuthService {
   // Obtenemos la instancia única de FirebaseAuth
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // 1. Stream: Escuchar cambios en el estado de autenticación
+  // Stream: Escuchar cambios en el estado de autenticación
   // Esto nos dirá en tiempo real si el usuario entró o salió
   Stream<User?> get userStatus => _auth.authStateChanges();
 
-  // 2. Registro con correo y contraseña
+  // Registro con correo y contraseña
   Future<UserCredential?> registerWithEmail(
     String email,
     String password,
@@ -27,7 +27,7 @@ class AuthService {
     }
   }
 
-  // 3. Inicio de sesión
+  // Inicio de sesión
   Future<UserCredential?> loginWithEmail(String email, String password) async {
     try {
       return await _auth.signInWithEmailAndPassword(
@@ -40,11 +40,11 @@ class AuthService {
     }
   }
 
-  // 4. Cerrar sesión
+  // Cerrar sesión
   Future<void> signOut() async {
     await _auth.signOut();
   }
 
-  // 5. Obtener el usuario actual (si existe)
+  // Obtener el usuario actual (si existe)
   User? get currentUser => _auth.currentUser;
 }

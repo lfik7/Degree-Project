@@ -2,7 +2,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart'; // Importante
 
 class DatabaseService {
-  // 1. Instancia de la base de datos
+  // Instancia de la base de datos
   final FirebaseDatabase _database = FirebaseDatabase.instance;
 
   // Alarm thresholds
