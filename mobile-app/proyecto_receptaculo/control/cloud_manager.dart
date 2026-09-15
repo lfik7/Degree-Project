@@ -155,9 +155,7 @@ class CloudManager {
 
   Future<void> getDoorData(DateTime startDate, DateTime endDate) async {
     // Get door events data
-    if (doorDataList.isNotEmpty) {
-      doorDataList.clear();
-    }
+    doorDataList.clear();
     bool frontToBack = startDate.isAfter(endDate); // front is the most recent
     int startYear = startDate.year;
     int startMonth = startDate.month;
@@ -172,52 +170,12 @@ class CloudManager {
     );
     endDay += frontToBack ? -1 : 1; // To include the end date
     while (doorDataListIndex < doorDataListDesiredLength) {
-      if (frontToBack) {
-        if (DateTime(
-          startYear,
-          startMonth,
-          startDay,
-        ).isBefore(DateTime(endYear, endMonth, endDay))) {
-          debugPrint("No more data available. Stopping.");
-          break;
-        }
-      } else {
-        if (DateTime(
-          startYear,
-          startMonth,
-          startDay,
-        ).isAfter(DateTime(endYear, endMonth, endDay))) {
-          debugPrint("No more data available. Stopping.");
-          break;
-        }
-      }
-
       String node = "$startYear/$startMonth/$startDay";
       debugPrint("Fetching door events for node: Door/$node");
       doorEventsSnapshot = await database.getDoorEvents(node);
       debugPrint(
         "Door Events Snapshot length: ${doorEventsSnapshot.children.length}",
       );
-      startDay += frontToBack ? -1 : 1;
-      if (!frontToBack) {
-        if (startDay > DateTime(startYear, startMonth + 1, 0).day) {
-          startDay = 1;
-          startMonth += 1;
-          if (startMonth > 12) {
-            startMonth = 1;
-            startYear += 1;
-          }
-        }
-      } else {
-        if (startDay == 0) {
-          startMonth -= 1;
-          if (startMonth == 0) {
-            startMonth = 12;
-            startYear -= 1;
-          }
-          startDay = DateTime(startYear, startMonth + 1, 0).day;
-        }
-      }
 
       for (var child in doorEventsSnapshot.children) {
         var data = child.value as Map<dynamic, dynamic>;
@@ -232,6 +190,39 @@ class CloudManager {
         doorDataList.add(doorData);
         doorDataListIndex++;
         if (doorDataListIndex >= doorDataListDesiredLength) {
+          break;
+        }
+      }
+
+      startDay += frontToBack ? -1 : 1;
+      if (!frontToBack) {
+        if (startDay > DateTime(startYear, startMonth + 1, 0).day) {
+          startDay = 1;
+          startMonth += 1;
+          if (startMonth > 12) {
+            startMonth = 1;
+            startYear += 1;
+          }
+        }
+        if (DateTime(startYear, startMonth, startDay).isAfter(
+          DateTime(endYear, endMonth, endDay).subtract(const Duration(days: 1)),
+        )) {
+          debugPrint("No more data available. Stopping.");
+          break;
+        }
+      } else {
+        if (startDay == 0) {
+          startMonth -= 1;
+          if (startMonth == 0) {
+            startMonth = 12;
+            startYear -= 1;
+          }
+          startDay = DateTime(startYear, startMonth + 1, 0).day;
+        }
+        if (DateTime(startYear, startMonth, startDay).isBefore(
+          DateTime(endYear, endMonth, endDay).add(const Duration(days: 1)),
+        )) {
+          debugPrint("No more data available. Stopping.");
           break;
         }
       }
@@ -269,10 +260,8 @@ class CloudManager {
   }
 
   Future<void> getMotorpumpData(DateTime startDate, DateTime endDate) async {
-    // Get door events data
-    if (motorpumpDataList.isNotEmpty) {
-      motorpumpDataList.clear();
-    }
+    // Get door events dat
+    motorpumpDataList.clear();
     bool frontToBack = startDate.isAfter(endDate); // front is the most recent
     int startYear = startDate.year;
     int startMonth = startDate.month;
@@ -287,52 +276,11 @@ class CloudManager {
     );
     endDay += frontToBack ? -1 : 1; // To include the end date
     while (motorpumpDataListIndex < motorpumpDataListDesiredLength) {
-      if (frontToBack) {
-        if (DateTime(
-          startYear,
-          startMonth,
-          startDay,
-        ).isBefore(DateTime(endYear, endMonth, endDay))) {
-          debugPrint("No more data available. Stopping.");
-          break;
-        }
-      } else {
-        if (DateTime(
-          startYear,
-          startMonth,
-          startDay,
-        ).isAfter(DateTime(endYear, endMonth, endDay))) {
-          debugPrint("No more data available. Stopping.");
-          break;
-        }
-      }
-
       String node = "$startYear/$startMonth/$startDay";
       motorpumpEventsSnapshot = await database.getMotorpumpEvents(node);
       debugPrint(
         "Motorpump Events Snapshot length: ${motorpumpEventsSnapshot.children.length}",
       );
-      startDay += frontToBack ? -1 : 1;
-      if (!frontToBack) {
-        if (startDay > DateTime(startYear, startMonth + 1, 0).day) {
-          startDay = 1;
-          startMonth += 1;
-          if (startMonth > 12) {
-            startMonth = 1;
-            startYear += 1;
-          }
-          startDay = DateTime(startYear, startMonth + 1, 0).day;
-        }
-      } else {
-        if (startDay == 0) {
-          startMonth -= 1;
-          if (startMonth == 0) {
-            startMonth = 12;
-            startYear -= 1;
-          }
-          startDay = DateTime(startYear, startMonth + 1, 0).day;
-        }
-      }
 
       for (var child in motorpumpEventsSnapshot.children) {
         var data = child.value as Map<dynamic, dynamic>;
@@ -347,6 +295,39 @@ class CloudManager {
         motorpumpDataList.add(motorpumpData);
         motorpumpDataListIndex++;
         if (motorpumpDataListIndex >= motorpumpDataListDesiredLength) {
+          break;
+        }
+      }
+
+      startDay += frontToBack ? -1 : 1;
+      if (!frontToBack) {
+        if (startDay > DateTime(startYear, startMonth + 1, 0).day) {
+          startDay = 1;
+          startMonth += 1;
+          if (startMonth > 12) {
+            startMonth = 1;
+            startYear += 1;
+          }
+        }
+        if (DateTime(startYear, startMonth, startDay).isAfter(
+          DateTime(endYear, endMonth, endDay).subtract(const Duration(days: 1)),
+        )) {
+          debugPrint("No more data available. Stopping.");
+          break;
+        }
+      } else {
+        if (startDay == 0) {
+          startMonth -= 1;
+          if (startMonth == 0) {
+            startMonth = 12;
+            startYear -= 1;
+          }
+          startDay = DateTime(startYear, startMonth + 1, 0).day;
+        }
+        if (DateTime(startYear, startMonth, startDay).isBefore(
+          DateTime(endYear, endMonth, endDay).add(const Duration(days: 1)),
+        )) {
+          debugPrint("No more data available. Stopping.");
           break;
         }
       }
@@ -387,9 +368,7 @@ class CloudManager {
 
   Future<void> getWeightData(DateTime startDate, DateTime endDate) async {
     // Get weight events data
-    if (weightDataList.isNotEmpty) {
-      weightDataList.clear();
-    }
+    weightDataList.clear();
     bool frontToBack = startDate.isAfter(endDate); // front is the most recent
     int startYear = startDate.year;
     int startMonth = startDate.month;
@@ -404,50 +383,11 @@ class CloudManager {
     );
     endDay += frontToBack ? -1 : 1; // To include the end date
     while (weightDataListIndex < weightDataListDesiredLength) {
-      if (frontToBack) {
-        if (DateTime(
-          startYear,
-          startMonth,
-          startDay,
-        ).isBefore(DateTime(endYear, endMonth, endDay))) {
-          debugPrint("No more data available. Stopping.");
-          break;
-        }
-      } else {
-        if (DateTime(
-          startYear,
-          startMonth,
-          startDay,
-        ).isAfter(DateTime(endYear, endMonth, endDay))) {
-          debugPrint("No more data available. Stopping.");
-          break;
-        }
-      }
       String node = "$startYear/$startMonth/$startDay";
       weightEventsSnapshot = await database.getWeightEvents(node);
       debugPrint(
         "Weight Events Snapshot length: ${weightEventsSnapshot.children.length}",
       );
-      startDay += frontToBack ? -1 : 1;
-      if (!frontToBack) {
-        if (startDay > DateTime(startYear, startMonth + 1, 0).day) {
-          startDay = 1;
-          startMonth += 1;
-          if (startMonth > 12) {
-            startMonth = 1;
-            startYear += 1;
-          }
-        }
-      } else {
-        if (startDay == 0) {
-          startMonth -= 1;
-          if (startMonth == 0) {
-            startMonth = 12;
-            startYear -= 1;
-          }
-          startDay = DateTime(startYear, startMonth + 1, 0).day;
-        }
-      }
 
       for (var child in weightEventsSnapshot.children) {
         var data = child.value as Map<dynamic, dynamic>;
@@ -462,6 +402,39 @@ class CloudManager {
         weightDataList.add(weightData);
         weightDataListIndex++;
         if (weightDataListIndex >= weightDataListDesiredLength) {
+          break;
+        }
+      }
+
+      startDay += frontToBack ? -1 : 1;
+      if (!frontToBack) {
+        if (startDay > DateTime(startYear, startMonth + 1, 0).day) {
+          startDay = 1;
+          startMonth += 1;
+          if (startMonth > 12) {
+            startMonth = 1;
+            startYear += 1;
+          }
+        }
+        if (DateTime(startYear, startMonth, startDay).isAfter(
+          DateTime(endYear, endMonth, endDay).subtract(const Duration(days: 1)),
+        )) {
+          debugPrint("No more data available. Stopping.");
+          break;
+        }
+      } else {
+        if (startDay == 0) {
+          startMonth -= 1;
+          if (startMonth == 0) {
+            startMonth = 12;
+            startYear -= 1;
+          }
+          startDay = DateTime(startYear, startMonth + 1, 0).day;
+        }
+        if (DateTime(startYear, startMonth, startDay).isBefore(
+          DateTime(endYear, endMonth, endDay).add(const Duration(days: 1)),
+        )) {
+          debugPrint("No more data available. Stopping.");
           break;
         }
       }
@@ -500,9 +473,7 @@ class CloudManager {
 
   Future<void> getVariablesData(DateTime startDate, DateTime endDate) async {
     // Get data log data
-    if (variablesDataList.isNotEmpty) {
-      variablesDataList.clear();
-    }
+    variablesDataList.clear();
     bool frontToBack = startDate.isAfter(endDate); // front is the most recent
     int startYear = startDate.year;
     int startMonth = startDate.month;
@@ -517,51 +488,12 @@ class CloudManager {
     );
     endDay += frontToBack ? -1 : 1; // To include the end date
     while (variablesDataListIndex < variablesDataListDesiredLength) {
-      if (frontToBack) {
-        if (DateTime(
-          startYear,
-          startMonth,
-          startDay,
-        ).isBefore(DateTime(endYear, endMonth, endDay))) {
-          debugPrint("No more data available. Stopping.");
-          break;
-        }
-      } else {
-        if (DateTime(
-          startYear,
-          startMonth,
-          startDay,
-        ).isAfter(DateTime(endYear, endMonth, endDay))) {
-          debugPrint("No more data available. Stopping.");
-          break;
-        }
-      }
       String node = "$startYear/$startMonth/$startDay";
       debugPrint("Fetching variables data for node: $node");
       dataLogSnapshot = await database.getDataLog(node);
       debugPrint(
         "Data Log Snapshot length: ${dataLogSnapshot.children.length}",
       );
-      startDay += frontToBack ? -1 : 1;
-      if (!frontToBack) {
-        if (startDay > DateTime(startYear, startMonth + 1, 0).day) {
-          startDay = 1;
-          startMonth += 1;
-          if (startMonth > 12) {
-            startMonth = 1;
-            startYear += 1;
-          }
-        }
-      } else {
-        if (startDay == 0) {
-          startMonth -= 1;
-          if (startMonth == 0) {
-            startMonth = 12;
-            startYear -= 1;
-          }
-          startDay = DateTime(startYear, startMonth + 1, 0).day;
-        }
-      }
 
       for (var child in dataLogSnapshot.children) {
         var data = child.value as Map<dynamic, dynamic>;
@@ -581,6 +513,39 @@ class CloudManager {
         variablesDataList.add(variablesData);
         variablesDataListIndex++;
         if (variablesDataListIndex >= variablesDataListDesiredLength) {
+          break;
+        }
+      }
+
+      startDay += frontToBack ? -1 : 1;
+      if (!frontToBack) {
+        if (startDay > DateTime(startYear, startMonth + 1, 0).day) {
+          startDay = 1;
+          startMonth += 1;
+          if (startMonth > 12) {
+            startMonth = 1;
+            startYear += 1;
+          }
+        }
+        if (DateTime(startYear, startMonth, startDay).isAfter(
+          DateTime(endYear, endMonth, endDay).subtract(const Duration(days: 1)),
+        )) {
+          debugPrint("No more data available. Stopping.");
+          break;
+        }
+      } else {
+        if (startDay == 0) {
+          startMonth -= 1;
+          if (startMonth == 0) {
+            startMonth = 12;
+            startYear -= 1;
+          }
+          startDay = DateTime(startYear, startMonth + 1, 0).day;
+        }
+        if (DateTime(startYear, startMonth, startDay).isBefore(
+          DateTime(endYear, endMonth, endDay).add(const Duration(days: 1)),
+        )) {
+          debugPrint("No more data available. Stopping.");
           break;
         }
       }
