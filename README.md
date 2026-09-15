@@ -66,7 +66,7 @@ flutter run
 
 | Dominio | Tecnologías |
 | --- | --- |
-| **Hardware** | KiCad (PCB), Proteus (Simulación), ESP32 (MCU) |
+| **Hardware** | Altium Designer (PCB), LTspice (Simulación), ESP32 (MCU) |
 | **Firmware** | C, C++, ESP-IDF, FreeRTOS |
 | **Mobile App** | Dart, Flutter, GetX/Provider |
 | **Backend/Cloud** | Firebase Auth, Firestore, Cloud Messaging |
